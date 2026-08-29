@@ -1,0 +1,16 @@
+{
+  "name": "Wikker",
+  "short_name": "Wikker",
+  "description": "An endless Wikipedia discovery feed — surprising facts, featured articles, news, places, words and quotes.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f1f2ee",
+  "theme_color": "#0d7a5f",
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

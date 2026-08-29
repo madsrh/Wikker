@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wikker — discover Wikipedia</title>
+<meta name="description" content="An endless discovery feed of Wikipedia: surprising facts, featured articles, news, trending topics, places and words.">
+<meta name="theme-color" content="#0d7a5f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Wikker">
+<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png">
+<link rel="icon" href="./favicon.ico" sizes="any">
+<link rel="manifest" href="./site.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: light dark;
+  --paper:     light-dark(#f1f2ee, #0e100e);
+  --surface:   light-dark(#ffffff, #171a17);
+  --surface-2: light-dark(#eceee7, #1e221d);
+  --ink:       light-dark(#171a14, #eef0ea);
+  --muted:     light-dark(#5c6358, #9aa196);
+  --line:      light-dark(#dee1d8, #2a312b);
+  --line2:     light-dark(#cdd1c5, #3a423a);   /* stronger card border */
+  --accent:    light-dark(#0d7a5f, #3ddc97);
+  --accent-2:  light-dark(#0a5c48, #7ceab9);
+  --on-accent: light-dark(#ffffff, #08120e);   /* text on accent fills */
+  --hi:        light-dark(rgba(255,201,64,.6), rgba(61,220,151,.28));
+  --news:      light-dark(#c0392b, #ff7a6e);
+  --featured:  light-dark(#b07d0a, #ecd07a);
+  --dyk-bg:    light-dark(#fbf4e4, #201d12);
+  --dyk-line:  light-dark(#ead9b3, #3a331d);
+  --word-bg:   light-dark(#f6f3ea, #1b1a15);
+  --word-line: light-dark(#e6ddc9, #2d2a20);
+  --quote-bg:  light-dark(#eef4f1, #13201b);
+  --quote-line:light-dark(#d3e6de, #22322b);
+  --shadow:    light-dark(0 1px 2px #1a1c1908, 0 8px 30px #1a1c190f);
+  --shadow-d:  light-dark(0 12px 44px #14201b22, 0 14px 44px #0009);
+  --maxw: 600px;
+  --display: "Fraunces", ui-serif, Georgia, serif;
+  --body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, sans-serif;
+}
+*{ box-sizing:border-box; }
+html{ scroll-behavior:smooth; }
+@media (prefers-reduced-motion: reduce){ html{ scroll-behavior:auto; } }
+body{ margin:0; background:var(--paper); color:var(--ink); font-family:var(--body); line-height:1.55; -webkit-font-smoothing:antialiased; }
+a{ color:inherit; }
+
+.topbar{ position:sticky; top:0; z-index:20; background:light-dark(#f1f2eecc,#0e100ecc); backdrop-filter:blur(14px) saturate(1.2); border-bottom:1px solid var(--line2); }
+.topbar .inner{ max-width:var(--maxw); margin:0 auto; padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.brand{ cursor:pointer; font-family:var(--display); font-weight:600; font-size:1.5rem; letter-spacing:-.02em; display:flex; align-items: baseline; line-height:1; }
+.brand .mark-i{ font-size: 2.5rem; }
+.spacer{ margin-left:auto; }
+.icon-btn{ border:1px solid var(--line2); background:var(--surface); color:var(--ink); width:38px; height:38px; border-radius:11px; cursor:pointer; font-size:1rem; display:inline-grid; place-items:center; transition:border-color .12s,color .12s; }
+.icon-btn:hover{ border-color:var(--accent); color:var(--accent); }
+.icon-btn:focus-visible,.chip:focus-visible,select:focus-visible,input:focus-visible,button:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+.chips{ position:sticky; top:63px; z-index:19; background:light-dark(#f1f2eecc,#0e100ecc); backdrop-filter:blur(14px); border-bottom:1px solid var(--line2); }
+.chips .row{ max-width:var(--maxw); margin:0 auto; padding:10px 16px; display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; }
+.chips .row::-webkit-scrollbar{ display:none; }
+.chip{ flex:0 0 auto; cursor:pointer; font-family:var(--body); border:1px solid var(--line2); background:var(--surface); color:var(--muted); padding:6px 14px; border-radius:999px; font-size:.86rem; font-weight:600; transition:all .12s; }
+.chip:hover{ border-color:var(--accent); color:var(--ink); }
+.chip.active{ background:var(--accent); border-color:var(--accent); color:var(--on-accent); }
+
+.feed{ max-width:var(--maxw); margin:0 auto; padding:18px 12px 40px; display:flex; flex-direction:column; gap:18px; min-height:60vh; }
+.card{ position:relative; background:var(--surface); border:1.5px solid var(--line2); border-radius:18px; box-shadow:var(--shadow); overflow:hidden; cursor:pointer; opacity:0; transform:translateY(12px); transition:opacity .5s ease,transform .5s ease,box-shadow .2s,border-color .2s; }
+.card.in{ opacity:1; transform:none; }
+@media (prefers-reduced-motion: reduce){ .card{ opacity:1; transform:none; transition:none; } }
+.card:hover{ box-shadow:var(--shadow-d); }
+.card:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+.hero{ position:relative; width:100%; min-height:180px; max-height:520px; overflow:hidden; background:var(--surface-2); margin:0; }
+.hero.portrait{ max-height:560px; }
+.hero-bg{ position:absolute; inset:0; background-size:cover; background-position:center; filter:blur(30px) saturate(1.15) brightness(.82); transform:scale(1.25); }
+.hero-img{ position:relative; display:block; margin:0 auto; width:auto; height:auto; max-width:100%; max-height:520px; object-fit:contain; }
+.hero.portrait .hero-img{ max-height:560px; }
+.grid{ display:grid; gap:3px; background:var(--line2); }
+.grid.n2{ grid-template-columns:1fr 1fr; } .grid.n3{ grid-template-columns:2fr 1fr; grid-template-rows:1fr 1fr; }
+.grid.n3 img:first-child{ grid-row:span 2; height:306px; } .grid img{ width:100%; height:152px; object-fit:cover; display:block; background:var(--surface-2); }
+
+.body{ padding:18px 20px 6px; }
+.eyebrow{ margin:0 0 9px; font-size:.71rem; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--accent); display:flex; align-items:center; gap:7px; }
+.title{ margin:0 0 10px; font-family:var(--display); font-weight:600; font-size:clamp(1.5rem,4.6vw,1.9rem); line-height:1.12; letter-spacing:-.012em; }
+.title a{ text-decoration:none; } .title a:hover{ text-decoration:underline; text-decoration-thickness:2px; text-decoration-color:var(--accent); text-underline-offset:3px; }
+.hook{ margin:0 0 8px; font-size:1.12rem; font-weight:500; line-height:1.5; }
+.hook .mark{ background:none; }
+.fact .mark{ background-image:linear-gradient(transparent 60%,var(--hi) 60% 92%,transparent 92%); background-repeat:no-repeat; -webkit-box-decoration-break:clone; box-decoration-break:clone; }
+.rest{ margin:0; color:var(--muted); font-size:1rem; }
+.actions{ display:flex; align-items:center; gap:8px; padding:12px 18px 15px; }
+.tags{ display:flex; gap:6px; flex-wrap:wrap; overflow:hidden; max-height:26px; align-items:center; }
+.tag{ font-size:.71rem; color:var(--muted); background:var(--surface-2); padding:3px 10px; border-radius:999px; }
+.src{ font-size:.68rem; color:var(--muted); border:1px solid var(--line2); padding:2px 8px; border-radius:999px; font-weight:600; }
+.react{ margin-left:auto; display:flex; align-items:center; gap:2px; }
+.react button{ border:none; background:transparent; cursor:pointer; color:var(--muted); padding:6px 9px; border-radius:999px; line-height:0; transition:background .15s,color .15s,transform .1s; }
+.react button:hover{ background:var(--surface-2); } .react button:active{ transform:scale(.86); }
+.react svg{ width:22px; height:22px; display:block; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+.like:hover{ color:var(--accent); } .like.on{ color:var(--accent); } .like.on svg{ fill:currentColor; fill-opacity:.16; }
+.dislike:hover{ color:#e2574e; } .dislike.on{ color:#e2574e; } .dislike.on svg{ fill:currentColor; fill-opacity:.16; }
+
+/* Did you know — centered, warm, clearly distinct */
+.card.dyk{ background:var(--dyk-bg); border-color:var(--dyk-line); }
+.card.dyk .body{ text-align:center; padding:28px 26px 12px; }
+.card.dyk .eyebrow{ justify-content:center; color:var(--featured); }
+.card.dyk .fact{ margin:0 auto; max-width:34ch; font-family:var(--display); font-weight:500; font-size:clamp(1.4rem,4.8vw,1.85rem); line-height:1.34; letter-spacing:-.005em; }
+.card.dyk .more{ margin-top:16px; }
+.more{ display:inline-block; margin-top:12px; color:var(--accent-2); font-weight:700; font-size:.9rem; text-decoration:none; } .more:hover{ text-decoration:underline; } .card.news .more{ color:var(--news); }
+
+/* trending / featured / news — single-side stripe (subtle) */
+.card.trending{ border-top:3px solid var(--accent); }
+.card.trending .eyebrow{ color:var(--accent); } .card.trending .eyebrow .dot{ width:8px; height:8px; border-radius:50%; background:var(--accent); animation:pulse 1.8s infinite; }
+@keyframes pulse{ 0%{ box-shadow:0 0 0 0 light-dark(#0d7a5f55,#3ddc9755);} 70%{ box-shadow:0 0 0 7px transparent;} 100%{ box-shadow:0 0 0 0 transparent;} }
+@media (prefers-reduced-motion: reduce){ .card.trending .eyebrow .dot{ animation:none; } }
+.card.featured{ border-top:3px solid var(--featured); } .card.featured .eyebrow{ color:var(--featured); }
+.card.news{ border-left:3px solid var(--news); } .card.news .eyebrow{ color:var(--news); }
+
+/* Word — a beautiful dictionary card */
+.card.word{ background-color:var(--word-bg); border-color:var(--word-line); background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"); background-repeat:repeat; }
+.card.word .eyebrow{ color:var(--accent-2); }
+.card.word .word{ font-family:var(--display); font-weight:400; font-size:clamp(2.4rem,8vw,3.3rem); margin:0 0 6px; letter-spacing:0; line-height:1.02; }
+.card.word .ipa{ display:flex; align-items:center; gap:10px; color:var(--muted); font-size:1.05rem; margin:0 0 12px; }
+.card.word .pos{ font-style:italic; color:var(--muted); margin:0 0 8px; font-size:.95rem; }
+.card.word .def{ margin:0; font-size:1.16rem; }
+.card.onthisday .eyebrow{ color:var(--accent-2); }
+.card.potd .eyebrow{ color:var(--accent-2); }
+
+/* Wikiquote */
+.card.quote{ background:var(--quote-bg); border-color:var(--quote-line); }
+.card.quote .body{ position:relative; text-align:center; padding:34px 26px 16px; }
+.card.quote .qm{ position:absolute; font-family:var(--display); font-weight:600; font-size:4.6rem; line-height:.7; color:var(--accent); opacity:.2; pointer-events:none; user-select:none; }
+.card.quote .qm.o{ top:14px; left:16px; } .card.quote .qm.c{ bottom:2px; right:18px; }
+.card.quote .qtext{ position:relative; font-family:var(--display); font-weight:500; font-size:clamp(1.3rem,4.6vw,1.72rem); line-height:1.38; margin:6px auto 14px; max-width:32ch; }
+.card.quote .qauthor{ font-size:.76rem; font-weight:700; letter-spacing:.13em; text-transform:uppercase; color:var(--accent-2); }
+.card.quote .more{ margin-top:14px; }
+.play{ border:1px solid var(--accent); background:transparent; color:var(--accent); width:30px; height:30px; border-radius:50%; cursor:pointer; display:inline-grid; place-items:center; font-size:.72rem; padding:0; }
+.play:hover{ background:var(--accent); color:var(--on-accent); }
+
+.sentinel{ max-width:var(--maxw); margin:0 auto; padding:6px 12px 70px; text-align:center; color:var(--muted); font-size:.9rem; }
+.spinner{ width:22px; height:22px; margin:0 auto 8px; border:2.5px solid var(--line2); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; }
+@media (prefers-reduced-motion: reduce){ .spinner{ animation:none; } }
+@keyframes spin{ to{ transform:rotate(360deg); } }
+.banner{ max-width:var(--maxw); margin:12px auto 0; background:var(--dyk-bg); border:1px solid var(--dyk-line); border-radius:14px; padding:11px 16px; font-size:.86rem; color:var(--ink); }
+.no-net{ text-align:center; padding:64px 22px; color:var(--muted); }
+.no-net .no-net-icon{ font-size:2.4rem; line-height:1; }
+.no-net strong{ display:block; font-family:var(--display); font-weight:600; font-size:1.35rem; color:var(--ink); margin:10px 0 4px; }
+.no-net p{ margin:0; font-size:.92rem; }
+
+.backdrop{ position:fixed; inset:0; z-index:40; background:light-dark(#1a1c1966,#000a); backdrop-filter:blur(4px); display:none; align-items:flex-start; justify-content:center; padding:5vh 16px; overflow:auto; }
+.backdrop.open{ display:flex; }
+.modal{ width:100%; max-width:460px; background:var(--surface); border:1.5px solid var(--line2); border-radius:20px; box-shadow:var(--shadow-d); padding:22px; }
+.modal h2{ font-family:var(--display); font-weight:600; margin:0 0 4px; font-size:1.5rem; }
+.modal .sub{ color:var(--muted); margin:0 0 18px; font-size:.92rem; }
+.mhead{ display:flex; align-items:center; margin-bottom:14px; } .mhead .icon-btn{ margin-left:auto; }
+.sect{ border-top:1px solid var(--line); padding:16px 0; } .sect:first-of-type{ border-top:none; padding-top:0; }
+.sect h3{ margin:0 0 10px; font-size:.98rem; font-family:var(--display); font-weight:600; }
+.field{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin:8px 0; } .field label{ font-size:.9rem; }
+select,input[type=text]{ font-family:var(--body); font-size:.9rem; padding:8px 10px; border:1px solid var(--line2); border-radius:10px; background:var(--surface-2); color:var(--ink); }
+.check{ display:flex; align-items:center; gap:10px; font-size:.9rem; cursor:pointer; }
+.check input{ width:18px; height:18px; accent-color:var(--accent); }
+.slider{ display:grid; grid-template-columns:110px 1fr 62px; align-items:center; gap:10px; margin:11px 0; } .slider label{ font-size:.9rem; } .slider .val{ font-size:.8rem; color:var(--muted); text-align:right; }
+input[type=range]{ width:100%; accent-color:var(--accent); }
+.catgrid{ display:flex; flex-wrap:wrap; gap:8px; }
+.catgrid .chip{ color:var(--ink); }
+.catgrid .chip.like{ background:var(--accent); border-color:var(--accent); color:var(--on-accent); }
+.catgrid .chip.dislike{ background:#e2574e; border-color:#e2574e; color:#fff; }
+.catgrid .chip.dislike::before{ content:"\2013 "; } .catgrid .chip.like::before{ content:"+ "; }
+.panel-list{ margin:6px 0 0; padding-left:20px; font-size:.9rem; } .panel-list li{ margin:4px 0; } .panel-list .score{ color:var(--accent); font-weight:700; font-variant-numeric:tabular-nums; } .panel-list .empty{ color:var(--muted); }
+.btn-primary{ width:100%; margin-top:18px; border:none; background:var(--accent); color:var(--on-accent); font-family:var(--body); font-weight:700; font-size:1rem; padding:13px; border-radius:12px; cursor:pointer; }
+.btn-primary:hover{ background:var(--accent-2); }
+.btn-ghost{ border:1px solid var(--line2); background:var(--surface); color:var(--ink); font-family:var(--body); font-weight:600; font-size:.85rem; padding:8px 14px; border-radius:10px; cursor:pointer; }
+.btn-ghost:hover{ border-color:var(--accent); color:var(--accent); }
+.btn-row{ display:flex; gap:8px; flex-wrap:wrap; }
+.settings-note{ margin:8px 0 0; color:var(--muted); font-size:.82rem; line-height:1.45; }
+.about-copy{ margin:0 0 10px; color:var(--muted); font-size:.88rem; line-height:1.55; }
+.about-links{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.about-links a{ text-decoration:none; }
+.about-links a:hover{ text-decoration:none; }
+.install-notice{ max-width:var(--maxw); margin:12px auto 0; padding:12px 14px; border:1px solid var(--line2); border-radius:14px; background:var(--surface); box-shadow:var(--shadow); display:flex; align-items:center; gap:12px; }
+.install-notice[hidden]{ display:none; }
+.install-notice .install-copy{ min-width:0; flex:1; }
+.install-notice strong{ display:block; font-family:var(--display); font-weight:600; line-height:1.2; }
+.install-notice p{ margin:2px 0 0; color:var(--muted); font-size:.82rem; line-height:1.35; }
+.install-notice .install-actions{ display:flex; gap:6px; flex:0 0 auto; }
+.install-notice .btn-primary{ width:auto; margin:0; padding:9px 12px; font-size:.86rem; }
+.install-notice .btn-ghost{ padding:8px 10px; }
+@media (max-width:430px){ .install-notice{ align-items:flex-start; } .install-notice .install-actions{ flex-direction:column; } }
+</style>
+</head>
+<body>
+<a id="top"></a>
+<header class="topbar">
+  <div class="inner">
+    <span class="brand" id="brand"><span class="mark-i">W</span>ikker</span>
+    <span class="spacer"></span>
+    <button class="icon-btn" id="settingsBtn" title="Settings" aria-label="Settings">⚙</button>
+    <button class="icon-btn" id="themeBtn" title="Toggle dark mode" aria-label="Toggle dark mode">☾</button>
+  </div>
+</header>
+
+<nav class="chips" aria-label="Categories"><div class="row" id="chipRow"></div></nav>
+<div id="banner"></div>
+<div class="install-notice" id="installNotice" hidden role="status" aria-live="polite">
+  <div class="install-copy"><strong>Install Wikker</strong><p id="installCopy">Keep Wikker on your home screen and open it like an app.</p></div>
+  <div class="install-actions"><button class="btn-primary" id="installAppBtn">Install</button><button class="btn-ghost" id="installDismissBtn" aria-label="Dismiss install suggestion">Not now</button></div>
+</div>
+
+<main class="feed" id="feed"></main>
+<div class="sentinel" id="sentinel"><div class="spinner"></div>Finding something interesting…</div>
+
+<!-- Onboarding -->
+<div class="backdrop" id="onboardModal">
+  <div class="modal">
+    <h2>Welcome to Wikker</h2>
+    <p class="sub">An endless feed of Wikipedia. Pick a few things you're curious about — you can change these any time.</p>
+    <div class="sect" style="border:none;padding-top:0"><h3>Your topics</h3><div class="catgrid" id="onboardCats"></div></div>
+    <div class="sect"><div class="field"><label for="onboardLang">Language edition</label><select id="onboardLang"></select></div></div>
+    <button class="btn-primary" id="onboardStart">Start exploring</button>
+  </div>
+</div>
+
+<!-- Settings / profile -->
+<div class="backdrop" id="settingsModal">
+  <div class="modal">
+    <div class="mhead"><h2 style="margin:0">Settings</h2><button class="icon-btn" id="settingsClose" aria-label="Close">✕</button></div>
+    <div class="sect"><h3>Profile</h3>
+      <div class="field"><label for="profileName">Profile name</label><input type="text" id="profileName" maxlength="40" value="Default"></div>
+      <div class="field"><label for="setLang">Language edition</label><select id="setLang"></select></div>
+      <p class="settings-note" id="profileMeta">Your interests and seen-post history are stored only on this device.</p>
+      <div class="btn-row" style="margin-top:10px"><button class="btn-ghost" id="resetSeenBtn">Reset seen history</button></div>
+    </div>
+    <div class="sect"><h3>Your topics</h3><div class="catgrid" id="setCats"></div></div>
+    <div class="sect"><h3>Display</h3>
+      <label class="check"><input type="checkbox" id="setSources"> Show source labels on cards</label>
+    </div>
+    <div class="sect"><h3>What you like</h3>
+      <ol class="panel-list" id="panelList"></ol>
+      <div class="btn-row" style="margin-top:12px">
+        <button class="btn-ghost" id="resetBtn">Reset interests</button>
+        <button class="btn-ghost" id="exportBtn">Export profile</button>
+        <button class="btn-ghost" id="importBtn">Import profile</button>
+        <input type="file" id="importFile" accept="application/json" hidden>
+      </div>
+    </div>
+    <div class="sect"><h3>How much to show</h3><div id="sliders"></div></div>
+    <div class="sect"><h3>About Wikker</h3>
+      <p class="about-copy">Wikker is a local-first Wikipedia discovery feed. Personalisation and seen-post history stay in your browser on this device.</p>
+      <p class="about-copy">The recommendation approach is inspired by <a href="https://github.com/rebane2001/xikipedia" target="_blank" rel="noopener">Xikipedia</a> by rebane2001: a simple, non-ML, on-device scoring algorithm.</p>
+      <p class="about-copy"><strong>License:</strong> <span id="aboutLicense">Not specified yet</span></p>
+      <div class="about-links">
+        <a class="btn-ghost" id="aboutGithub" href="https://github.com/madsrh/Wikker/" target="_blank" rel="noopener" hidden>GitHub</a>
+        <a class="btn-ghost" id="aboutDonate" href="https://www.paypal.com/donate/?business=NTB7G4YVA44ZY&no_recurring=0&item_name=Enjoying%20this%20free%20app%3F%20Consider%20supporting%20the%20project.%20Even%20the%20smallest%20donation%20is%20appreciated.&currency_code=USD" target="_blank" rel="noopener" hidden>Donate via PayPal</a>
+        <button class="btn-ghost" id="settingsInstallBtn">Install Wikker</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   Wikker — a scrollable Wikipedia discovery feed
+   Build: pwa-profile-dedupe-v3
+   No database. Content is fetched live (JSON) from the Wikimedia APIs.
+   Settings + learned interests live in localStorage (and can be exported
+   as a JSON file). A tiny PHP proxy (trends.php) supplies Google Trends.
+   ========================================================================= */
+
+const LANGS = [["en","English"],["da","Dansk"],["de","Deutsch"],
+  ["es","Español"],["fr","Français"],["nl","Nederlands"],["sv","Svenska"],["nb","Norsk"],["it","Italiano"],["pt","Português"]];
+const TOPICS = ["Science","History","Geography","Animals","Space","Music","Sport","Art","Technology","Food","Movies","Nature","People"];
+/* Use the local Wikipedia vocabulary when a category chip is selected. This
+   avoids ranked searches for the English chip label dominating non-English
+   editions (for example, "Music" on Danish Wikipedia). */
+const TOPIC_TERMS = {
+  da:{Science:"videnskab",History:"historie",Geography:"geografi",Animals:"dyr",Space:"rummet",Music:"musik",Sport:"sport",Art:"kunst",Technology:"teknologi",Food:"mad",Movies:"film",Nature:"natur",People:"personer"},
+  de:{Science:"Wissenschaft",History:"Geschichte",Geography:"Geographie",Animals:"Tiere",Space:"Weltraum",Music:"Musik",Sport:"Sport",Art:"Kunst",Technology:"Technologie",Food:"Essen",Movies:"Film",Nature:"Natur",People:"Personen"},
+  es:{Science:"ciencia",History:"historia",Geography:"geografía",Animals:"animales",Space:"espacio",Music:"música",Sport:"deporte",Art:"arte",Technology:"tecnología",Food:"gastronomía",Movies:"cine",Nature:"naturaleza",People:"personas"},
+  fr:{Science:"science",History:"histoire",Geography:"géographie",Animals:"animaux",Space:"espace",Music:"musique",Sport:"sport",Art:"art",Technology:"technologie",Food:"cuisine",Movies:"cinéma",Nature:"nature",People:"personnalités"},
+  nl:{Science:"wetenschap",History:"geschiedenis",Geography:"geografie",Animals:"dieren",Space:"ruimtevaart",Music:"muziek",Sport:"sport",Art:"kunst",Technology:"technologie",Food:"voedsel",Movies:"film",Nature:"natuur",People:"personen"},
+  sv:{Science:"vetenskap",History:"historia",Geography:"geografi",Animals:"djur",Space:"rymden",Music:"musik",Sport:"sport",Art:"konst",Technology:"teknik",Food:"mat",Movies:"film",Nature:"natur",People:"personer"},
+  nb:{Science:"vitenskap",History:"historie",Geography:"geografi",Animals:"dyr",Space:"verdensrommet",Music:"musikk",Sport:"sport",Art:"kunst",Technology:"teknologi",Food:"mat",Movies:"film",Nature:"natur",People:"personer"},
+  it:{Science:"scienza",History:"storia",Geography:"geografia",Animals:"animali",Space:"spazio",Music:"musica",Sport:"sport",Art:"arte",Technology:"tecnologia",Food:"cucina",Movies:"cinema",Nature:"natura",People:"persone"},
+  pt:{Science:"ciência",History:"história",Geography:"geografia",Animals:"animais",Space:"espaço",Music:"música",Sport:"esporte",Art:"arte",Technology:"tecnologia",Food:"culinária",Movies:"cinema",Nature:"natureza",People:"pessoas"}
+};
+/* The eyebrow can stay as Wikipedia's precise category, while this smaller
+   taxonomy controls the tag and the recommendation points. Specific sports
+   are useful interests in their own right; other pages map to a broad topic. */
+const INTEREST_PARENT = Object.freeze({
+  Baseball:"Sport", Basketball:"Sport", Football:"Sport", "Ice hockey":"Sport",
+  Tennis:"Sport", Handball:"Sport", Cycling:"Sport", Motorsport:"Sport",
+  Cricket:"Sport", Golf:"Sport", Athletics:"Sport", Volleyball:"Sport",
+  Rugby:"Sport", Boxing:"Sport", Swimming:"Sport", Skiing:"Sport"
+});
+const SPECIFIC_INTEREST_RULES = [
+  ["Baseball", /(?:^|[^\p{L}\p{N}])(?:baseball\p{L}*|major league baseball|mlb|b[eé]isbol\p{L}*)(?=$|[^\p{L}\p{N}])/iu],
+  ["Basketball", /(?:^|[^\p{L}\p{N}])(?:basketball\p{L}*|basketbold\p{L}*|baloncesto\p{L}*|pallacanestro\p{L}*)(?=$|[^\p{L}\p{N}])/iu],
+  ["Football", /(?:^|[^\p{L}\p{N}])(?:association football|american football|football\p{L}*|soccer\p{L}*|fodbold\p{L}*|fu(?:ß|ss)ball\p{L}*|f[uú]tbol\p{L}*|calcio\p{L}*|voetbal\p{L}*|fotboll\p{L}*|fotball\p{L}*)(?=$|[^\p{L}\p{N}])/iu],
+  ["Ice hockey", /(?:^|[^\p{L}\p{N}])(?:ice hockey|ishockey\p{L}*|eishockey\p{L}*|ijshockey\p{L}*|hockey sur glace|h[oó]quei no gelo)(?=$|[^\p{L}\p{N}])/iu],
+  ["Tennis", /(?:^|[^\p{L}\p{N}])tennis\p{L}*(?=$|[^\p{L}\p{N}])/iu],
+  ["Handball", /(?:^|[^\p{L}\p{N}])(?:handball\p{L}*|h[aå]ndbold\p{L}*|handboll\p{L}*|balonmano\p{L}*)(?=$|[^\p{L}\p{N}])/iu],
+  ["Cycling", /(?:^|[^\p{L}\p{N}])(?:cycling\p{L}*|cyclist\p{L}*|cyclisme\p{L}*|ciclismo\p{L}*|wielrennen\p{L}*|cykling\p{L}*|cykelrytter\p{L}*|sykling\p{L}*|radsport\p{L}*)(?=$|[^\p{L}\p{N}])/iu],
+  ["Motorsport", /(?:^|[^\p{L}\p{N}])(?:motorsport|motor racing|formula one|formel 1|formule 1|f[oó]rmula 1|motogp|nascar)(?=$|[^\p{L}\p{N}])/iu],
+  ["Cricket", /(?:^|[^\p{L}\p{N}])cricket\p{L}*(?=$|[^\p{L}\p{N}])/iu],
+  ["Golf", /(?:^|[^\p{L}\p{N}])golf\p{L}*(?=$|[^\p{L}\p{N}])/iu],
+  ["Athletics", /(?:^|[^\p{L}\p{N}])(?:athletics|track and field|atletik|athl[eé]tisme|atletismo|leichtathletik)(?=$|[^\p{L}\p{N}])/iu],
+  ["Volleyball", /(?:^|[^\p{L}\p{N}])(?:volleyball\p{L}*|volleybal\p{L}*|voleibol\p{L}*|pallavolo\p{L}*)(?=$|[^\p{L}\p{N}])/iu],
+  ["Rugby", /(?:^|[^\p{L}\p{N}])rugby\p{L}*(?=$|[^\p{L}\p{N}])/iu],
+  ["Boxing", /(?:^|[^\p{L}\p{N}])(?:boxing\p{L}*|boxer\p{L}*|boksning\p{L}*|boxen\p{L}*|boxeo\p{L}*|boxe\p{L}*|boksen\p{L}*|pugilato\p{L}*)(?=$|[^\p{L}\p{N}])/iu],
+  ["Swimming", /(?:^|[^\p{L}\p{N}])(?:swimming\p{L}*|swimmer\p{L}*|sv[oø]mning\p{L}*|schwimmen\p{L}*|nataci[oó]n\p{L}*|natation\p{L}*|zwemmen\p{L}*|simning\p{L}*|nuoto\p{L}*)(?=$|[^\p{L}\p{N}])/iu],
+  ["Skiing", /(?:^|[^\p{L}\p{N}])(?:skiing|skier|alpint|langrend|langlauf|esqu[ií]|sci)(?=$|[^\p{L}\p{N}])/iu]
+];
+const BROAD_INTEREST_RULES = [
+  ["Music", /(?:^|[^\p{L}\p{N}])(?:music|musical|musician|musicians|musik\p{L}*|musique|m[uú]sica|musica|muziek|musikk|album|albums|song|songs|sang|sange|sanger\p{L}*|chanson|chansons|band|bands|orchestra|orchestras|orkester\p{L}*|composer|composers|komponist\p{L}*|singer|singers|musiker\p{L}*|rapper|rappers|discography)(?=$|[^\p{L}\p{N}])/iu],
+  ["Movies", /(?:^|[^\p{L}\p{N}])(?:film|films|filmer|filmene|movie|movies|cinema|television|tv series|tv-series|actor|actors|actress|actresses|skuespiller\p{L}*|schauspieler\p{L}*|acteur\p{L}*|actrice\p{L}*|attore\p{L}*|attrice\p{L}*|director|directors|filminstrukt[oø]r\p{L}*)(?=$|[^\p{L}\p{N}])/iu],
+  ["Sport", /(?:^|[^\p{L}\p{N}])(?:sport\p{L}*|championship|championships|mesterskab\p{L}*|meisterschaft\p{L}*|tournament|tournaments|turnering\p{L}*|olympic\p{L}*|olympisk\p{L}*|athlete|athletes|atlet|atleter|player|players|spiller|spillere|league|leagues|liga\p{L}*|team|teams)(?=$|[^\p{L}\p{N}])/iu],
+  ["Space", /(?:^|[^\p{L}\p{N}])(?:space|rummet|weltraum|espace|espacio|spazio|ruimtevaart|rymden|verdensrommet|astronom\p{L}*|planet\p{L}*|galax\p{L}*|galakse\p{L}*|stjerne\p{L}*|star|stars|moon|m[aå]ne|asteroid\p{L}*|comet\p{L}*|komet\p{L}*|spacecraft|rumfart\p{L}*)(?=$|[^\p{L}\p{N}])/iu],
+  ["Animals", /(?:^|[^\p{L}\p{N}])(?:animal|animals|dyr\p{L}*|tier|tiere|animaux|animales|animali|djur\p{L}*|zoolog\p{L}*|mammal|mammals|pattedyr\p{L}*|bird|birds|fugl\p{L}*|fish|fishes|fisk\p{L}*|insect|insects|insekt\p{L}*|reptile|reptiles|amphibian|amphibians)(?=$|[^\p{L}\p{N}])/iu],
+  ["Technology", /(?:^|[^\p{L}\p{N}])(?:technology|teknologi|technologie|tecnolog\p{L}*|software|computer|computers|internet|programming|engineering|ingeni[oø]r\p{L}*|robot|robots|digital|video game|video games|videospil\p{L}*)(?=$|[^\p{L}\p{N}])/iu],
+  ["Food", /(?:^|[^\p{L}\p{N}])(?:food|foods|mad|essen|cuisine|cocina|cucina|voedsel|mat|dish|dishes|retter|recipe|recipes|cheese|ost|bread|br[oø]d|fruit|frugt|vegetable|vegetables|wine|beer|[oø]l)(?=$|[^\p{L}\p{N}])/iu],
+  ["Geography", /(?:^|[^\p{L}\p{N}])(?:geography|geographic|geografi\p{L}*|country|countries|city|cities|byer|municipal\p{L}*|kommune\p{L}*|region|regions|river|rivers|flod\p{L}*|mountain|mountains|bjerg\p{L}*|island|islands|[oø]er|ocean|oceans|province|provinces|capital|capitals)(?=$|[^\p{L}\p{N}])/iu],
+  ["History", /(?:^|[^\p{L}\p{N}])(?:history|historie|geschichte|historia|histoire|storia|geschiedenis|war|wars|krig\p{L}*|battle|battles|slag|empire|empires|imperium|dynasty|dynasties|dynasti\p{L}*|ancient|antik\p{L}*|medieval|middelalder\p{L}*|archaeolog\p{L}*|ark[aæ]olog\p{L}*)(?=$|[^\p{L}\p{N}])/iu],
+  ["Science", /(?:^|[^\p{L}\p{N}])(?:science|scientist|scientists|videnskab\p{L}*|wissenschaft\p{L}*|ciencia\p{L}*|wetenschap\p{L}*|vetenskap\p{L}*|vitenskap\p{L}*|scienza\p{L}*|physics|physicist\p{L}*|fysik\p{L}*|chemistry|chemist\p{L}*|kemi\p{L}*|biology|biologist\p{L}*|biologi\p{L}*|mathematics|mathematician\p{L}*|matematik\p{L}*|medicine|medical|medicin\p{L}*|geology|geologi\p{L}*)(?=$|[^\p{L}\p{N}])/iu],
+  ["Nature", /(?:^|[^\p{L}\p{N}])(?:nature|natur|naturaleza|natura|natuur|environment\p{L}*|milj[oø]\p{L}*|ecolog\p{L}*|[oø]kolog\p{L}*|forest|forests|skov\p{L}*|plant|plants|flora|tree|trees|tr[aæ]\p{L}*|climate|klima)(?=$|[^\p{L}\p{N}])/iu],
+  ["Art", /(?:^|[^\p{L}\p{N}])(?:art|arts|kunst\p{L}*|artist|artists|painting|paintings|maleri\p{L}*|sculpture|sculptures|skulptur\p{L}*|architecture|arkitektur|literature|litteratur|novel|novels|poetry|poesi|photography|photographer\p{L}*)(?=$|[^\p{L}\p{N}])/iu],
+  ["People", /(?:^|[^\p{L}\p{N}])(?:people|person|persons|personer|personen|personnes|persone|pessoas|politician|politicians|politiker\p{L}*|writer|writers|forfatter\p{L}*|author|authors|king|kings|konge\p{L}*|queen|queens|dronning\p{L}*|monarch\p{L}*|president\p{L}*|born|f[oø]dt|geboren|nacido|nacida|nato|nata|f[oö]dd)(?=$|[^\p{L}\p{N}])/iu]
+];
+const MIX_ITEMS = [["news","News & featured"],["dyk","Did you know"],["trending","Trending"],["onthisday","On this day"],["image","Picture of the day"],["place","Places"],["word","Words"]];
+const MIX_LABELS = ["Off","Less","Normal","More"]; const MIXF = [Infinity,1.7,1.0,0.6];
+const LBL = {
+  featured:{da:"Ugens artikel",de:"Artikel des Tages",es:"Artículo destacado",fr:"Article du jour",nl:"Uitgelicht",sv:"Utvald artikel",nb:"Ukens artikkel",it:"In vetrina",pt:"Artigo em destaque",_:"Featured article"},
+  news:{da:"Aktuelle begivenheder",de:"Aktuelles",es:"Actualidad",fr:"Actualités",nl:"In het nieuws",sv:"Aktuellt",nb:"Aktuelt",it:"Attualità",pt:"Notícias",_:"In the news"},
+  onthisday:{da:"P\u00e5 denne dag",de:"Was geschah am",es:"Efem\u00e9rides",fr:"\u00c9ph\u00e9m\u00e9ride",nl:"Op deze dag",sv:"Dagens datum",nb:"P\u00e5 denne dag",it:"Accadde oggi",pt:"Efem\u00e9rides",_:"On this day"},
+  image:{da:"Dagens billede",de:"Bild des Tages",es:"Imagen del d\u00eda",fr:"Image du jour",nl:"Afbeelding van de dag",sv:"Dagens bild",nb:"Dagens bilde",it:"Immagine del giorno",pt:"Imagem do dia",_:"Picture of the day"}
+};
+const W = { PASS:-5, LIKE:50, LIKE_STREAK:4, DISLIKE:60, OPEN:75, IMG_BONUS:8, HOOK_BONUS:1, BORING:-40 };
+// Xikipedia's exploration mix is 18% random, 42% best-score, 40% weighted.
+// Wikker keeps that mix but uses a larger live candidate pool and hard de-duplication.
+const BATCH=18, REFILL_AT=14, STEP=3, WARMUP=3, CATEGORY_SEARCH_WINDOW=320, MAX_SEEN_KEYS=12000;
+const LS_SET="wikker.settings.v1", LS_SCORES="wikker.scores.v1", LS_THEME="wikker.theme", LS_SEEN="wikker.seen.v1", LS_PROFILE="wikker.profile.v2", LS_INSTALL_DISMISS="wikker.install.dismissed.v1";
+const DEFAULTS = { lang:"en", mix:{news:2,dyk:2,trending:2,onthisday:2,image:1,place:2,word:2}, cats:[], topicPrefs:{}, sources:false, onboarded:false };
+const APP_INFO = {
+  license:"Not specified yet",
+  githubUrl:"https://github.com/madsrh/Wikker/",
+  paypalUrl:"https://www.paypal.com/donate/?business=NTB7G4YVA44ZY&no_recurring=0&item_name=Enjoying%20this%20free%20app%3F%20Consider%20supporting%20the%20project.%20Even%20the%20smallest%20donation%20is%20appreciated.&currency_code=USD",
+  xikipediaUrl:"https://github.com/rebane2001/xikipedia"
+};
+
+/* ---- curated content (real, no AI) ---- */
+let wordPool=[];  // filled live from Wiktionary Word-of-the-day archive
+
+/* ---- state ---- */
+let settings = loadSettings();
+let localProfile = loadLocalProfile();
+const catScores = new Map(localProfile.scores||[]);
+const seenOrder = [...(localProfile.seen||[])];
+const seen = new Set(seenOrder);
+const placeSeen = new Set();
+let pool=[], wordQueue=[], dykQueue=[], placeQueue=[], featuredQueue=[], newsQueue=[], mostreadQueue=[], onthisdayQueue=[], imageQueue=[];
+const featuredSeen=new Set(), newsSeen=new Set(), mostreadSeen=new Set(), otdSeen=new Set(), imgSeen=new Set();
+const topicSeriesSeen=new Set();
+let topic="For you", contToken=null, fetching=false;
+let postsSinceLike=0, total=0, offline=false, profileSaveTimer=null;
+
+const feed=document.getElementById("feed"), sentinel=document.getElementById("sentinel"), banner=document.getElementById("banner");
+
+/* ---- persistence / local user profile ---- */
+function loadSettings(){ let s; try{ s=JSON.parse(localStorage.getItem(LS_SET))||{}; }catch{ s={}; } s=Object.assign({},DEFAULTS,s); s.mix=Object.assign({},DEFAULTS.mix,s.mix||{}); if(s.lang==="simple") s.lang="en"; if(!s.topicPrefs||typeof s.topicPrefs!=="object") s.topicPrefs={}; if(Array.isArray(s.cats)) for(const c of s.cats) if(!(c in s.topicPrefs)) s.topicPrefs[c]=1; return s; }
+function saveSettings(){ try{ localStorage.setItem(LS_SET,JSON.stringify(settings)); }catch{} }
+function legacyScores(){ try{ return JSON.parse(localStorage.getItem(LS_SCORES))||[]; }catch{ return []; } }
+function legacySeen(){ try{ return JSON.parse(localStorage.getItem(LS_SEEN))||[]; }catch{ return []; } }
+function loadLocalProfile(){
+  try{ const p=JSON.parse(localStorage.getItem(LS_PROFILE)); if(p&&typeof p==="object") return {name:p.name||"Default",scores:Array.isArray(p.scores)?p.scores:[],seen:Array.isArray(p.seen)?p.seen:[],postsSeen:Number(p.postsSeen)||0}; }catch{}
+  const oldSeen=legacySeen();
+  return {name:"Default",scores:legacyScores(),seen:oldSeen.map(id=>`legacy:${id}`),postsSeen:oldSeen.length};
+}
+function profileSnapshot(){ return {version:2,name:localProfile.name||"Default",scores:[...catScores],seen:seenOrder.slice(-MAX_SEEN_KEYS),postsSeen:Number(localProfile.postsSeen)||0}; }
+function saveLocalProfileNow(){
+  if(profileSaveTimer){ clearTimeout(profileSaveTimer); profileSaveTimer=null; }
+  localProfile=profileSnapshot();
+  try{ localStorage.setItem(LS_PROFILE,JSON.stringify(localProfile)); }catch{}
+}
+function scheduleProfileSave(){ if(profileSaveTimer) return; profileSaveTimer=setTimeout(saveLocalProfileNow,250); }
+function saveScores(){ localProfile.scores=[...catScores]; scheduleProfileSave(); }
+function rememberSeenKeys(keys,countPost=true){
+  let changed=false;
+  for(const key of [...new Set((keys||[]).filter(Boolean))]){ if(seen.has(key)) continue; seen.add(key); seenOrder.push(key); changed=true; }
+  while(seenOrder.length>MAX_SEEN_KEYS){ const old=seenOrder.shift(); seen.delete(old); }
+  if(countPost) localProfile.postsSeen=(Number(localProfile.postsSeen)||0)+1;
+  if(changed||countPost){ scheduleProfileSave(); updateProfileMeta(); }
+}
+function clearSeenHistory(){ seen.clear(); seenOrder.length=0; localProfile.postsSeen=0; scheduleProfileSave(); updateProfileMeta(); }
+function updateProfileMeta(){ const el=document.getElementById("profileMeta"); if(el) el.textContent=`${Number(localProfile.postsSeen)||0} posts remembered. Interests and history stay only on this device.`; }
+window.addEventListener("pagehide",saveLocalProfileNow);
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") saveLocalProfileNow(); });
+
+/* ---- hosts ---- */
+function wikiHost(){ return settings.lang==="en"?"simple.wikipedia.org":`${settings.lang}.wikipedia.org`; }   /* article source */
+function feedHost(){ return settings.lang==="en"?"en.wikipedia.org":`${settings.lang}.wikipedia.org`; }        /* featured/news/most-read source */
+function apiBase(){ return `https://${wikiHost()}/w/api.php`; }
+function restBase(){ return `https://${wikiHost()}/api/rest_v1`; }
+function feedRest(){ return `https://${feedHost()}/api/rest_v1`; }
+function voyHost(){ return `${settings.lang}.wikivoyage.org`; }
+function wikiUrl(host,title){ return `https://${host}/wiki/${encodeURIComponent(String(title).replace(/ /g,"_"))}`; }
+function displayTitle(title){ let t=String(title||""); try{ t=decodeURIComponent(t); }catch{} return t.replace(/_/g," ").replace(/\s+/g," ").trim(); }
+function hostFromUrl(url,fallback=wikiHost()){ try{ return new URL(url).host||fallback; }catch{ return fallback; } }
+function keyText(s){ return displayTitle(s).normalize("NFKC").toLocaleLowerCase().replace(/\s+/g," ").trim(); }
+function titleSeenKey(host,title){ return `title:${host}:${keyText(title)}`; }
+function pageSeenKey(page,host){ const qid=page?.pageprops?.wikibase_item; return qid?`wd:${qid}`:`page:${host}:${page?.pageid||keyText(page?.title)}`; }
+function simpleHash(s){ let h=2166136261; for(const ch of String(s)){ h^=ch.codePointAt(0); h=Math.imul(h,16777619); } return (h>>>0).toString(36); }
+function specialSeenKey(kind,...parts){ return `${kind}:${simpleHash(parts.join("|"))}`; }
+function isArticleSeen(a){ return !!a&&(seen.has(a.seenKey)||seen.has(a.titleKey)||seen.has(`legacy:${a.id}`)); }
+function markArticleSeen(a){ rememberSeenKeys([a?.seenKey,a?.titleKey],true); }
+function label(kind){ return LBL[kind][settings.lang]||LBL[kind]._; }
+
+/* ---- theme ---- */
+const themeBtn=document.getElementById("themeBtn");
+function applyTheme(t){ document.documentElement.style.colorScheme=t; themeBtn.textContent=t==="dark"?"☀":"☾"; }
+applyTheme(localStorage.getItem(LS_THEME)||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"));
+themeBtn.onclick=()=>{ const n=document.documentElement.style.colorScheme==="dark"?"light":"dark"; applyTheme(n); localStorage.setItem(LS_THEME,n); };
+
+/* ---- PWA install ---- */
+let deferredInstallPrompt=null;
+const installNotice=document.getElementById("installNotice"), installCopy=document.getElementById("installCopy"), installAppBtn=document.getElementById("installAppBtn");
+function isStandalone(){ return window.matchMedia?.("(display-mode: standalone)").matches||window.navigator.standalone===true; }
+function isIOS(){ return /iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1); }
+function installSnoozed(){ return Date.now()<(Number(localStorage.getItem(LS_INSTALL_DISMISS))||0); }
+function hideInstallNotice(snooze=false){ installNotice.hidden=true; if(snooze) try{ localStorage.setItem(LS_INSTALL_DISMISS,String(Date.now()+14*86400000)); }catch{} }
+function showInstallNotice(){
+  if(isStandalone()||installSnoozed()||!settings.onboarded) return;
+  if(deferredInstallPrompt){ installCopy.textContent="Keep Wikker on your home screen and open it like an app."; installAppBtn.textContent="Install"; installNotice.hidden=false; }
+  else if(isIOS()){ installCopy.textContent="On iPhone or iPad, add Wikker from Safari's Share menu."; installAppBtn.textContent="How to"; installNotice.hidden=false; }
+}
+async function requestInstall(){
+  if(isStandalone()) return;
+  if(deferredInstallPrompt){
+    deferredInstallPrompt.prompt();
+    const choice=await deferredInstallPrompt.userChoice.catch(()=>null);
+    deferredInstallPrompt=null;
+    hideInstallNotice(choice?.outcome!=="accepted");
+    updateInstallSettingsButton();
+    return;
+  }
+  if(isIOS()) alert("To install Wikker on iPhone or iPad: open it in Safari, tap Share, then choose Add to Home Screen.");
+  else alert("Use your browser's Install app / Add to home screen command. In Chromium browsers it appears in the address bar or browser menu when the site is installable.");
+}
+function updateInstallSettingsButton(){ const b=document.getElementById("settingsInstallBtn"); if(!b) return; b.hidden=isStandalone(); b.textContent=deferredInstallPrompt?"Install Wikker":"Install Wikker"; }
+window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); deferredInstallPrompt=e; showInstallNotice(); updateInstallSettingsButton(); });
+window.addEventListener("appinstalled",()=>{ deferredInstallPrompt=null; try{ localStorage.removeItem(LS_INSTALL_DISMISS); }catch{} installNotice.hidden=true; updateInstallSettingsButton(); });
+document.getElementById("installAppBtn").onclick=requestInstall;
+document.getElementById("installDismissBtn").onclick=()=>hideInstallNotice(true);
+if("serviceWorker" in navigator){ window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{})); }
+
+/* ---- text helpers ---- */
+const BORING_RE=/(is|was) (a|an|the) (genus|species|family|order|subspecies|commune|village|hamlet|rural|census-designated|small town|suburb|neighbou?rhood|surname|given name|male given name|female given name|masculine|feminine)\b|may refer to|is a list of|taxonomic/i;
+const SPARK_RE=/\b(first|only|largest|smallest|biggest|oldest|tallest|longest|fastest|deepest|highest|most|world'?s|record|famous|invented|discovered|founded|created|built|defeated|survived|escaped|killed|died|born|million|billion|thousand|century|ancient|secret|mysterious|unique|rare|banned|award|won|champion|hottest|coldest)\b/i;
+const NUM_RE=/\b\d{1,4}(?:[,.]\d+)?\b/;
+const DULLCAT_RE=/\d{3,4}|births|deaths|living people|levende personer|personnes vivantes|lebende person|persone viventi|personas vivas|pessoas vivas|levande personer|stub|articles?|pages|wikidata|disambiguation|cs1|webarchive|with |commons category|use dmy|use british|short description|all articles/i;
+function esc(s){ const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
+function stripHtml(h){ const d=new DOMParser().parseFromString(h,"text/html"); return (d.body.textContent||"").replace(/\s+/g," ").trim(); }
+const ABBR=new Set(["etc","eg","ie","fx","approx","dr","mr","mrs","ms","prof","st","vs","vol","no","nr","ca","jf","bl","dvs","osv","mfl","pkt","al","inc","co","dept","fig","ph","jr","sr"]);
+function splitSentences(t){ t=(t||"").replace(/\s+/g," ").trim(); if(!t) return [t];
+  const parts=[]; let start=0; const re=/([.!?]+)(\s+)/g; let m;
+  while((m=re.exec(t))){
+    const punct=m[1], end=m.index+punct.length, before=t[m.index-1]||"", after=t[re.lastIndex]||"";
+    if(punct==="."){
+      if(/\d/.test(before)) continue;                                  // ordinal / date like "31."
+      const w=(t.slice(0,m.index).match(/([\p{L}]+)$/u)||[])[1];
+      if(w && (w.length===1 || ABBR.has(w.toLowerCase()))) continue;    // initials / abbreviations
+    }
+    if(after && !/[\p{Lu}0-9"“(«¿¡]/u.test(after)) continue;            // next char must start a sentence
+    parts.push(t.slice(start,end).trim()); start=re.lastIndex;
+  }
+  if(start<t.length) parts.push(t.slice(start).trim());
+  const out=parts.filter(Boolean); return out.length?out:[t]; }
+function sentenceScore(s){ let sc=0; if(SPARK_RE.test(s))sc+=3; if(NUM_RE.test(s))sc+=2; if(/\b(1[0-9]|20)\d\d\b/.test(s))sc+=1; if(s.length>40&&s.length<220)sc+=1; return sc; }
+function pickHook(x){ const s=splitSentences(x).map(t=>t.trim()).filter(t=>t.length>25); if(!s.length){ const w=(x||"").trim(); return {hook:w,rest:"",spark:0}; }
+  let bi=0,best=-1; s.forEach((t,i)=>{ const c=sentenceScore(t)-i*0.4; if(c>best){best=c;bi=i;} });
+  return {hook:s[bi],rest:s.filter((_,i)=>i!==bi).slice(0,3).join(" "),spark:best}; }
+function niceCategory(cats){ return cats.find(c=>!DULLCAT_RE.test(c))||cats[0]||""; }
+function firstInterestMatch(text,rules){ return rules.find(([,re])=>re.test(text))?.[0]||null; }
+function inferInterestCategory(cats,title,extract,preferredTopic=topic,fallback="General"){
+  const categoryText=(cats||[]).join(" "), titleText=displayTitle(title), bodyText=[titleText,extract||""].join(" ");
+  const specific=firstInterestMatch([categoryText,titleText,extract||""].join(" "),SPECIFIC_INTEREST_RULES);
+  // A selected category remains the broad interest, except when a recognised
+  // sub-interest belongs to it (Sport -> Baseball, Football, and so on).
+  if(TOPICS.includes(preferredTopic)){
+    if(specific&&INTEREST_PARENT[specific]===preferredTopic) return specific;
+    return preferredTopic;
+  }
+  if(specific) return specific;
+  return firstInterestMatch(categoryText,BROAD_INTEREST_RULES)
+    ||firstInterestMatch(titleText,BROAD_INTEREST_RULES)
+    ||firstInterestMatch(bodyText,BROAD_INTEREST_RULES)
+    ||fallback;
+}
+const CANONICAL_INTERESTS=new Set([...TOPICS,...Object.keys(INTEREST_PARENT),...Object.values(INTEREST_PARENT),"News","Featured","Trending","Travel","Words","Language","Did you know","General"]);
+function migrateLegacyScores(){ let changed=false;
+  for(const [raw,value] of [...catScores]){ if(CANONICAL_INTERESTS.has(raw)) continue;
+    const mapped=inferInterestCategory([raw],"","","For you",null); if(!mapped||mapped===raw) continue;
+    catScores.delete(raw); catScores.set(mapped,(catScores.get(mapped)||0)+value); changed=true; }
+  if(changed) saveScores();
+}
+function interestScore(a){ let sc=0; if(BORING_RE.test(a.extract))sc+=W.BORING; if(a.thumb)sc+=6; sc+=Math.min(6,a.hookSpark||0); if(a.extract.length<140)sc-=6; if(a.cats.some(c=>/disambiguation|stub/i.test(c)))sc+=W.BORING; return sc; }
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function topicSearchTerm(name){ return TOPIC_TERMS[settings.lang]?.[name]||name; }
+/* Only collapse obvious numbered/volume families. This keeps genuinely
+   different pages random while preventing runs like Absolute Music 13/12/11. */
+function seriesFamilyKey(title){ const raw=displayTitle(title).toLocaleLowerCase(); let t=raw.replace(/\s*\([^)]*\)\s*$/u,"").trim(); const before=t;
+  t=t.replace(/\b(?:vol(?:ume)?|part|season|series|episode|chapter|no\.?|number)\s*[-.:#]?\s*(?:\d{1,4}|[ivxlcdm]+)\s*$/iu,"").trim();
+  if(t===before) t=t.replace(/[\s._–—-]+(?:\d{1,4}|[ivxlcdm]{2,})\s*$/iu,"").trim();
+  if(!t||t===before) return ""; return t.replace(/[^\p{L}\p{N}]+/gu," ").replace(/\s+/g," ").trim(); }
+
+/* ---- fetching ---- */
+function q(params){ return `${apiBase()}?`+new URLSearchParams({ action:"query",format:"json",origin:"*",formatversion:"2",prop:"extracts|pageimages|categories|pageprops",ppprop:"wikibase_item",exintro:"1",explaintext:"1",exchars:"700",exlimit:"max",piprop:"thumbnail",pithumbsize:"1000",cllimit:"max",clshow:"!hidden",...params }); }
+function sourceParams(){ if(topic==="For you") return {generator:"random",grnnamespace:"0",grnlimit:String(BATCH)};
+  // Search results are relevance-ranked, so a random offset keeps category
+  // feeds exploratory instead of repeatedly walking the same ranked sequence.
+  return {generator:"search",gsrsearch:topicSearchTerm(topic),gsrnamespace:"0",gsrlimit:String(BATCH),gsroffset:String(Math.floor(Math.random()*CATEGORY_SEARCH_WINDOW))}; }
+function normalize(page){ if(!page||page.missing) return null; const extract=(page.extract||"").trim(); if(extract.length<60) return null;
+  const cats=(page.categories||[]).map(c=>c.title.replace(/^[^:]+:/,"").trim()).filter(Boolean); const {hook,rest,spark}=pickHook(extract);
+  const displayCat=niceCategory(cats), scoreCat=inferInterestCategory(cats,page.title,extract), host=wikiHost();
+  return { id:page.pageid,qid:page.pageprops?.wikibase_item||null,seenKey:pageSeenKey(page,host),titleKey:titleSeenKey(host,page.title),title:displayTitle(page.title),extract,hook,rest,hookSpark:spark,cats,displayCat,scoreCat,thumb:page.thumbnail?page.thumbnail.source:null,url:wikiUrl(host,page.title),type:"article" }; }
+async function fetchArticles(){ if(fetching) return 0; fetching=true;
+  try{ const res=await fetch(q(sourceParams()),{headers:{Accept:"application/json"}}); if(!res.ok) throw 0; const data=await res.json();
+    if(topic!=="For you") contToken=null; let added=0;
+    const pages=topic==="For you"?(data.query?.pages||[]):shuffle([...(data.query?.pages||[])]);
+    for(const pg of pages){ const a=normalize(pg); if(!a||isArticleSeen(a)||pool.some(x=>x.seenKey===a.seenKey||x.titleKey===a.titleKey)) continue; if(interestScore(a)<=W.BORING) continue;
+      if(topic!=="For you"){ const family=seriesFamilyKey(a.title); if(family&&topicSeriesSeen.has(family)) continue; if(family) topicSeriesSeen.add(family); }
+      pool.push(a); added++; }
+    offline=false; clearNoInternet(); return added;
+  }catch(e){ offline=true; showNoInternet(); return 0; } finally{ fetching=false; } }
+
+const mediaCache=new Map(), englishTitleCache=new Map();
+async function fetchImages(title,host){ const h=host||wikiHost(), key=h+"|"+title; if(mediaCache.has(key)) return mediaCache.get(key);
+  try{ const res=await fetch(`https://${h}/api/rest_v1/page/media-list/${encodeURIComponent(displayTitle(title).replace(/ /g,"_"))}`); if(!res.ok) throw 0;
+    const data=await res.json(); const imgs=[];
+    for(const it of (data.items||[])){ if(it.type!=="image"||it.showInGallery===false) continue; if(/logo|icon|flag|\.svg|symbol|map of|coat of arms/i.test(it.title||"")) continue;
+      const ss=it.srcset||[]; if(!ss.length) continue; let src=ss[ss.length-1].src||ss[0].src; if(src.startsWith("//")) src="https:"+src; imgs.push(src); if(imgs.length>=3) break; }
+    mediaCache.set(key,imgs); return imgs;
+  }catch{ mediaCache.set(key,[]); return []; } }
+async function englishTitleFor(title,host){ const h=host||wikiHost(); if(h==="en.wikipedia.org") return displayTitle(title); if(!/\.wikipedia\.org$/i.test(h)) return null;
+  const key=h+"|"+title; if(englishTitleCache.has(key)) return englishTitleCache.get(key);
+  try{ const res=await fetch(`https://${h}/w/api.php?`+new URLSearchParams({action:"query",format:"json",origin:"*",formatversion:"2",prop:"langlinks",lllang:"en",lllimit:"1",redirects:"1",titles:displayTitle(title)})); if(!res.ok) throw 0;
+    const data=await res.json(); const en=data.query?.pages?.[0]?.langlinks?.[0]?.title||null; englishTitleCache.set(key,en); return en;
+  }catch{ englishTitleCache.set(key,null); return null; } }
+async function fetchImagesWithFallback(title,host){ const h=host||wikiHost(); const local=await fetchImages(title,h); if(local.length) return local;
+  const enTitle=await englishTitleFor(title,h); if(!enTitle) return []; return fetchImages(enTitle,"en.wikipedia.org"); }
+async function pageImage(title,host){ return (await fetchImagesWithFallback(title,host))[0]||null; }
+
+const audioCache=new Map();
+async function fetchWord(word){
+  try{
+    const res=await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+    if(!res.ok) return null;
+    const data=await res.json(); const entry=Array.isArray(data)?data[0]:null; if(!entry) return null;
+    let ipa=entry.phonetic||"", audio="";
+    for(const p of (entry.phonetics||[])){ if(!ipa&&p.text) ipa=p.text; if(!audio&&p.audio) audio=p.audio; }
+    const m=(entry.meanings||[])[0]||{}; const pos=m.partOfSpeech||"";
+    const def=((m.definitions||[])[0]||{}).definition||""; if(!def) return null;
+    if(audio&&audio.startsWith("//")) audio="https:"+audio;
+    return { word:entry.word||word, ipa, pos, def, audio, url:wikiUrl("en.wiktionary.org",word) };
+  }catch{ return null; }
+}
+
+async function loadWords(){ if(wordPool.length>15||offline) return; const yr=new Date().getUTCFullYear();
+  for(const y of [yr,yr-1]){ try{
+    const res=await fetch("https://en.wiktionary.org/w/api.php?"+new URLSearchParams({action:"query",list:"categorymembers",cmtitle:`Category:Word of the day archive/${y}`,cmnamespace:"0",cmtype:"page",cmlimit:"500",format:"json",origin:"*",formatversion:"2"}));
+    if(!res.ok) continue; const ms=(await res.json()).query?.categorymembers||[];
+    for(const mm of ms){ const w=(mm.title||"").trim(); if(w&&!/[:\/]/.test(w)&&!seen.has(wordSeenKey({word:w}))&&!wordPool.includes(w)) wordPool.push(w); }
+  }catch{} if(wordPool.length>60) break; }
+  shuffle(wordPool); }
+/* places (Wikivoyage) */
+async function loadPlaces(){ try{ const res=await fetch(`https://${voyHost()}/w/api.php?`+new URLSearchParams({action:"query",format:"json",origin:"*",formatversion:"2",generator:"random",grnnamespace:"0",grnlimit:"8",prop:"extracts|pageimages",exintro:"1",explaintext:"1",exchars:"500",exlimit:"max",piprop:"thumbnail",pithumbsize:"1000"}));
+  if(!res.ok) return; const data=await res.json();
+  for(const p of (data.query?.pages||[])){ const ex=(p.extract||"").trim(); if(ex.length<80||/may refer to|disambiguation/i.test(ex)||placeSeen.has(p.title)) continue; placeSeen.add(p.title);
+    placeQueue.push({name:p.title,extract:ex,hook:pickHook(ex).hook,thumb:p.thumbnail?.source||null,url:wikiUrl(voyHost(),p.title)}); }
+}catch{} }
+
+/* featured + news */
+async function loadFeatured(){ const now=new Date();
+  for(let i=0;i<5;i++){ const d=new Date(now.getTime()-i*86400000); const y=d.getUTCFullYear(),m=String(d.getUTCMonth()+1).padStart(2,"0"),day=String(d.getUTCDate()).padStart(2,"0");
+    try{ const res=await fetch(`${feedRest()}/feed/featured/${y}/${m}/${day}`); if(!res.ok) continue; const data=await res.json();
+      const t=data.tfa; if(t&&t.title&&!featuredSeen.has(t.title)){ featuredSeen.add(t.title); featuredQueue.push({title:displayTitle(t.title),extract:(t.extract||"").trim(),hook:pickHook(t.extract||"").hook,thumb:t.thumbnail?.source||null,url:t.content_urls?.desktop?.page||wikiUrl(feedHost(),t.title),seenKey:titleSeenKey(feedHost(),t.title)}); }
+      for(const s of (data.news||[])){ const text=stripHtml(s.story||""); if(text.length<20||newsSeen.has(text)) continue; newsSeen.add(text); const links=s.links||[]; const withImg=links.find(l=>l.thumbnail); const primary=withImg||links[0]; if(!primary) continue; newsQueue.push({text,title:displayTitle(primary.title),thumb:withImg?.thumbnail?.source||null,url:primary.content_urls?.desktop?.page||wikiUrl(feedHost(),primary.title),seenKey:specialSeenKey("news",feedHost(),text)}); }
+      for(const ar of (data.mostread?.articles||[])){ const tt=ar.title||""; if(!tt||tt.includes(":")||/main[_ ]page|forside|hovedside|hauptseite/i.test(tt)) continue; if(mostreadSeen.has(tt)) continue; mostreadSeen.add(tt); const ex=(ar.extract||"").trim(); mostreadQueue.push({ id:"m_"+tt, seenKey:titleSeenKey(feedHost(),tt), titleKey:titleSeenKey(feedHost(),tt), title:displayTitle(tt), extract:ex, hook:pickHook(ex).hook||ex, rest:"", hookSpark:0, cats:["Trending"], displayCat:"Trending", scoreCat:inferInterestCategory([],tt,ex,"For you","Trending"), thumb:ar.thumbnail?.source||null, url:ar.content_urls?.desktop?.page||wikiUrl(feedHost(),tt), type:"article" }); }
+      for(const ev of (data.onthisday||[])){ const k=specialSeenKey("otd",String(ev.year||""),(ev.text||"").slice(0,40)); if(otdSeen.has(k)) continue; otdSeen.add(k); const pg=(ev.pages||[])[0]||null; onthisdayQueue.push({year:ev.year,text:(ev.text||"").trim(),title:pg?displayTitle(pg.title):"",thumb:pg?.thumbnail?.source||null,url:pg?.content_urls?.desktop?.page||"#"}); }
+      const im=data.image; if(im&&im.title&&!imgSeen.has(im.title)){ imgSeen.add(im.title); imageQueue.push({title:im.title,thumb:im.thumbnail?.source||im.image?.source||null,caption:im.description?.text||"",url:im.file_page||im.image?.source||"#"}); }
+    }catch{} }
+}
+
+/* trending now uses Wikipedia's most-read articles (collected in loadFeatured) */
+/* trending: Wikipedia Pageviews API (top viewed), enriched with summaries */
+async function loadTrending(){ if(offline) return;
+  try{
+    const d=new Date(Date.now()-2*86400000); const y=d.getUTCFullYear(),m=String(d.getUTCMonth()+1).padStart(2,"0"),day=String(d.getUTCDate()).padStart(2,"0");
+    const res=await fetch(`https://wikimedia.org/api/rest_v1/metrics/pageviews/top/${feedHost()}/all-access/${y}/${m}/${day}`);
+    if(!res.ok) return; const arts=(((await res.json()).items||[])[0]||{}).articles||[];
+    const titles=arts.map(a=>a.article).filter(t=>t&&!t.includes(":")&&t!=="Main_Page"&&!/^Special/.test(t)).slice(0,45).map(t=>t.replace(/_/g," "));
+    for(let i=0;i<titles.length;i+=20){ const batch=titles.slice(i,i+20);
+      try{ const u=`https://${feedHost()}/w/api.php?`+new URLSearchParams({action:"query",format:"json",origin:"*",formatversion:"2",titles:batch.join("|"),prop:"extracts|pageimages|categories",exintro:"1",explaintext:"1",exchars:"600",exlimit:"max",piprop:"thumbnail",pithumbsize:"1000",cllimit:"max",clshow:"!hidden"});
+        const r=await fetch(u); if(!r.ok) continue; const pgs=(await r.json()).query?.pages||[];
+        for(const pg of pgs){ if(!pg||pg.missing) continue; const extract=(pg.extract||"").trim(); if(extract.length<40) continue; const title=pg.title; if(mostreadSeen.has(title)) continue; mostreadSeen.add(title); const {hook,rest,spark}=pickHook(extract);
+          mostreadQueue.push({ id:"t_"+title, seenKey:titleSeenKey(feedHost(),title), titleKey:titleSeenKey(feedHost(),title), title:displayTitle(title), extract, hook, rest, hookSpark:spark, cats:["Trending"], displayCat:"Trending", scoreCat:inferInterestCategory([],title,extract,"For you","Trending"), thumb:pg.thumbnail?.source||null, url:wikiUrl(feedHost(),title), type:"article" }); }
+      }catch{} }
+  }catch{}
+}
+
+/* ---- algorithm ---- */
+function scoreArticle(a){ const scoreCat=a.scoreCat||inferInterestCategory(a.cats,a.title,a.extract,"For you"); let s=catScores.get(scoreCat)||0; const parent=INTEREST_PARENT[scoreCat]; if(parent) s+=(catScores.get(parent)||0)*.6; if(a.thumb) s+=W.IMG_BONUS; s+=(a.hookSpark||0)*W.HOOK_BONUS; for(const c of (a.cats||[])) if(/given names|surnames/i.test(c)) s-=1000; return s; }
+function pickNext(){ if(!pool.length) return null; if(categoryMode()) return pool.splice(Math.floor(Math.random()*pool.length),1)[0]; const r=Math.random(); if(r<0.18) return pool.splice(Math.floor(Math.random()*pool.length),1)[0];
+  const sc=pool.map(a=>({a,s:scoreArticle(a)})); if(r<0.60){ /* next 42% */ sc.sort((x,y)=>y.s-x.s); const b=sc[0].a; pool.splice(pool.indexOf(b),1); return b; }
+  const min=Math.min(...sc.map(x=>x.s)),sh=min<0?-min+1:1; let tot=0; for(const x of sc) tot+=x.s+sh; let r2=Math.random()*tot;
+  for(const x of sc){ r2-=(x.s+sh); if(r2<=0){ pool.splice(pool.indexOf(x.a),1); return x.a; } } return pool.pop(); }
+function engage(cats,delta){ for(const c of cats){ if(DULLCAT_RE.test(c)) continue; catScores.set(c,(catScores.get(c)||0)+delta); } saveScores(); renderPanel(); }
+
+/* ---- rendering ---- */
+const inObs=new IntersectionObserver(es=>{ for(const e of es) if(e.isIntersecting){ e.target.classList.add("in"); inObs.unobserve(e.target); } },{threshold:0.05});
+const passObs=new IntersectionObserver(es=>{ for(const e of es){ const c=e.target; if(!e.isIntersecting && e.boundingClientRect.top<0 && !c._passed){ c._passed=true; postsSinceLike++; if(!c._react||c._react==="none") engage(c._cats,W.PASS); passObs.unobserve(c); } } },{threshold:0});
+function srcPill(name){ return settings.sources&&name?`<span class="src">${esc(name)}</span>`:""; }
+function actionsRow(source,interest,extra){ return `<div class="actions"><div class="tags">${srcPill(source)}${interest?`<span class="tag" title="Interest updated by Like or Not interested">${esc(interest)}</span>`:""}${extra||""}</div><div class="react"><button class="dislike" aria-label="Not interested" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></svg></button><button class="like" aria-label="Like" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg></button></div></div>`; }
+function attach(card,cats,url){ card._cats=cats; card.tabIndex=0; card._react="none"; card._applied=0;
+  const open=e=>{ if(e.target.closest(".react")||e.target.closest(".play")) return; engage(cats,W.OPEN); if(!e.target.closest("a")) window.open(url,"_blank","noopener"); };
+  card.addEventListener("click",open); card.addEventListener("keydown",e=>{ if(e.key==="Enter") open(e); });
+  const likeBtn=card.querySelector(".like"), disBtn=card.querySelector(".dislike");
+  function setReact(kind){ if(card._applied){ engage(cats,-card._applied); card._applied=0; } const next=(card._react===kind)?"none":kind; let d=0;
+    if(next==="like"){ d=W.LIKE+W.LIKE_STREAK*postsSinceLike; postsSinceLike=0; } else if(next==="dislike"){ d=-W.DISLIKE; }
+    if(d){ engage(cats,d); card._applied=d; } card._react=next;
+    likeBtn.classList.toggle("on",next==="like"); likeBtn.setAttribute("aria-pressed",next==="like");
+    disBtn.classList.toggle("on",next==="dislike"); disBtn.setAttribute("aria-pressed",next==="dislike"); }
+  likeBtn.addEventListener("click",e=>{ e.stopPropagation(); setReact("like"); });
+  disBtn.addEventListener("click",e=>{ e.stopPropagation(); setReact("dislike"); });
+  inObs.observe(card); passObs.observe(card); feed.appendChild(card); }
+function heroHTML(src){ return src?`<figure class="hero"><div class="hero-bg" style="background-image:url('${esc(src)}')"></div><img class="hero-img" src="${esc(src)}" alt="" loading="lazy" decoding="async"></figure>`:""; }
+function tuneHero(card){ const img=card.querySelector(".hero-img"); if(!img) return; const fit=()=>{ card.querySelector(".hero").classList.toggle("portrait", img.naturalWidth/img.naturalHeight<0.9); }; if(img.complete&&img.naturalWidth) fit(); else img.addEventListener("load",fit,{once:true}); }
+function upgradeImages(card,title,host,allowGallery=true){ if(offline) return; const mo=new IntersectionObserver(async es=>{ if(!es[0].isIntersecting) return; mo.disconnect(); const imgs=await fetchImagesWithFallback(title,host); if(!imgs.length) return; const cur=card.querySelector(".hero,.grid");
+    if(imgs.length>=2&&allowGallery){ const n=Math.min(3,imgs.length); const box=document.createElement("div"); box.className="grid n"+n; box.innerHTML=imgs.slice(0,n).map(s=>`<img src="${esc(s)}" alt="" loading="lazy" decoding="async">`).join(""); if(cur) cur.replaceWith(box); else card.insertBefore(box,card.firstChild); return; }
+    if(!cur){ const src=imgs[0], fig=document.createElement("figure"); fig.className="hero"; fig.innerHTML=`<div class="hero-bg" style="background-image:url('${esc(src)}')"></div><img class="hero-img" src="${esc(src)}" alt="" loading="lazy" decoding="async">`; card.insertBefore(fig,card.firstChild); tuneHero(card); }
+  },{rootMargin:"250px"}); mo.observe(card); }
+
+function renderArticle(a,{cls="",eyebrow=null,source="Wikipedia",upgrade=true}={}){ if(!a.seenKey){ const h=hostFromUrl(a.url); a.seenKey=titleSeenKey(h,a.title); a.titleKey=a.titleKey||a.seenKey; } markArticleSeen(a);
+  const card=document.createElement("article"); card.className="card"+(cls?" "+cls:"");
+  const displayCat=a.displayCat||niceCategory(a.cats||[]), scoreCat=a.scoreCat||inferInterestCategory(a.cats,a.title,a.extract,"For you");
+  const eye=eyebrow!==null?eyebrow:(displayCat?`<p class="eyebrow">${esc(displayCat)}</p>`:"");
+  card.innerHTML=`${heroHTML(a.thumb)}<div class="body">${eye}
+    <h2 class="title"><a href="${esc(a.url)}" target="_blank" rel="noopener">${esc(displayTitle(a.title))}</a></h2>
+    <p class="hook">${esc(a.hook)}</p>${a.rest?`<p class="rest">${esc(a.rest)}</p>`:""}</div>
+    ${actionsRow(source,scoreCat)}`;
+  attach(card,[scoreCat],a.url); tuneHero(card); if(upgrade||!a.thumb) upgradeImages(card,a.title,hostFromUrl(a.url),upgrade); }
+
+function wordSeenKey(w){ return specialSeenKey("word",w.word||""); }
+function placeHistoryKey(p){ return specialSeenKey("place",settings.lang,p.name||""); }
+
+function renderFeatured(f){ const scoreCat=inferInterestCategory([],f.title,f.extract,"For you","Featured"); renderArticle({id:"f_"+f.title,title:f.title,extract:f.extract||"",hook:f.hook||f.extract,rest:"",cats:["Featured"],displayCat:"Featured",scoreCat,thumb:f.thumb,url:f.url},{cls:"featured special",eyebrow:`<p class="eyebrow">★ ${esc(label("featured"))}</p>`,source:"Wikipedia",upgrade:false}); }
+
+function renderNews(nw){ const card=document.createElement("article"); card.className="card news special";
+  rememberSeenKeys([nw.seenKey||specialSeenKey("news",feedHost(),nw.text)],true);
+  const scoreCat=inferInterestCategory([],nw.title,nw.text,"For you","News");
+  card.innerHTML=`${heroHTML(nw.thumb)}<div class="body"><p class="eyebrow">${esc(label("news"))}</p><h2 class="title"><a href="${esc(nw.url)}" target="_blank" rel="noopener">${esc(nw.text)}</a></h2>${nw.title?`<a class="more" href="${esc(nw.url)}" target="_blank" rel="noopener">Read about ${esc(displayTitle(nw.title))} →</a>`:""}</div>${actionsRow("Wikipedia",scoreCat)}`;
+  attach(card,[scoreCat],nw.url); tuneHero(card); if(!nw.thumb&&nw.title) upgradeImages(card,nw.title,hostFromUrl(nw.url),false); }
+
+function renderPlace(p){ const card=document.createElement("article"); card.className="card place special";
+  rememberSeenKeys([placeHistoryKey(p)],true);
+  card.innerHTML=`${heroHTML(p.thumb)}<div class="body"><p class="eyebrow">✈ Destination</p><h2 class="title"><a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(displayTitle(p.name))}</a></h2><p class="hook">${esc(p.hook)}</p></div>${actionsRow("Wikivoyage","Travel")}`;
+  attach(card,["Travel"],p.url); tuneHero(card); }
+
+function renderWord(w){ const card=document.createElement("article"); card.className="card word special";
+  rememberSeenKeys([wordSeenKey(w)],true);
+  const ipaHtml=w.ipa?`<p class="ipa">${esc(w.ipa)} <button class="play" hidden aria-label="Play pronunciation">\u25b6</button></p>`:"";
+  card.innerHTML=`<div class="body"><p class="eyebrow">\ud83d\udcd6 Word</p><p class="word">${esc(w.word)}</p>${ipaHtml}<p class="pos">${esc(w.pos)}</p><p class="def">${esc(w.def)}</p>
+    <a class="more" href="${esc(w.url)}" target="_blank" rel="noopener">See on Wiktionary \u2192</a></div>${actionsRow("Wiktionary","Words")}`;
+  attach(card,["Words"],w.url);
+  if(w.audio){ const btn=card.querySelector(".play"); if(btn){ btn.hidden=false; let audio; btn.addEventListener("click",e=>{ e.stopPropagation(); try{ if(!audio) audio=new Audio(w.audio); audio.currentTime=0; audio.play(); }catch{} }); } } }
+
+
+
+function renderOnThisDay(o){ const card=document.createElement("article"); card.className="card onthisday special";
+  rememberSeenKeys([specialSeenKey("otd",String(o.year||""),(o.text||"").slice(0,40))],true);
+  const scoreCat=inferInterestCategory([],o.title,o.text,"For you","History");
+  const link=(o.url&&o.url!=="#")?o.url:(o.title?wikiUrl(feedHost(),o.title):"#");
+  card.innerHTML=`${o.thumb?heroHTML(o.thumb):""}<div class="body"><p class="eyebrow">\ud83d\udcc5 ${esc(label("onthisday"))}${o.year?" \u00b7 "+esc(String(o.year)):""}</p><p class="hook">${esc(o.text)}</p>${o.title&&link!=="#"?`<a class="more" href="${esc(link)}" target="_blank" rel="noopener">Read about ${esc(o.title)} \u2192</a>`:""}</div>${actionsRow("Wikipedia",scoreCat)}`;
+  attach(card,[scoreCat],link); tuneHero(card); }
+function renderImage(im){ const card=document.createElement("article"); card.className="card potd special";
+  rememberSeenKeys([specialSeenKey("potd",im.title||"")],true);
+  const cap=stripHtml(im.caption||"");
+  card.innerHTML=`${im.thumb?heroHTML(im.thumb):""}<div class="body"><p class="eyebrow">\ud83c\udf04 ${esc(label("image"))}</p>${cap?`<p class="hook">${esc(cap)}</p>`:""}</div>${actionsRow("Wikimedia Commons","Photography")}`;
+  attach(card,["Photography"],im.url&&im.url!=="#"?im.url:"https://commons.wikimedia.org"); tuneHero(card); }
+
+const DYK_TEMPLATE={ en:"Template:Did you know" };
+async function loadDyk(){ if(offline) return; const tmpl=DYK_TEMPLATE[settings.lang]; if(!tmpl) return;
+  try{ const res=await fetch(`https://${feedHost()}/w/api.php?`+new URLSearchParams({action:"parse",page:tmpl,prop:"text",format:"json",origin:"*",formatversion:"2"}));
+    if(!res.ok) return; const doc=new DOMParser().parseFromString((await res.json()).parse?.text||"","text/html");
+    for(const li of doc.querySelectorAll(".mw-parser-output li")){
+      const c=li.cloneNode(true); c.querySelectorAll("sup,.reference,style").forEach(n=>n.remove());
+      let text=(c.textContent||"").replace(/\\s+/g," ").trim();
+      if(!/\\?$/.test(text)) continue; text=text.replace(/^(?:\\.{3}|\u2026)\\s*/,"").trim();
+      if(text.length<20||text.length>320||!/\\bthat\\b/i.test(text)) continue;
+      const a=li.querySelector("b a[href^='/wiki/']")||li.querySelector("a[href^='/wiki/']");
+      const title=a?a.textContent.trim():null; const url=a?`https://${feedHost()}${a.getAttribute("href")}`:`https://${feedHost()}/wiki/Main_Page`;
+      const d={fact:text,title,url}; if(seen.has(dykSeenKey(d))||dykQueue.some(x=>x.fact===text)) continue; dykQueue.push(d);
+    }
+  }catch{} }
+function dykSeenKey(d){ return specialSeenKey("dyk",(d.fact||"").slice(0,60)); }
+function renderDyk(d){ const card=document.createElement("article"); card.className="card dyk special";
+  rememberSeenKeys([dykSeenKey(d)],true);
+  const scoreCat=inferInterestCategory([],d.title,d.fact,"For you","Did you know");
+  card.innerHTML=`<div class="body"><p class="eyebrow">\ud83d\udca1 Did you know</p><p class="fact">\u2026<span class="mark">${esc(d.fact)}</span></p>${d.title?`<a class="more" href="${esc(d.url)}" target="_blank" rel="noopener">Read about ${esc(displayTitle(d.title))} \u2192</a>`:""}</div>${actionsRow("Wikipedia",scoreCat)}`;
+  attach(card,[scoreCat],d.url);
+  if(d.title&&!offline) pageImage(d.title,feedHost()).then(src=>{ if(src){ const fig=document.createElement("figure"); fig.className="hero"; fig.innerHTML=`<div class="hero-bg" style="background-image:url('${esc(src)}')"></div><img class="hero-img" src="${esc(src)}" alt="">`; card.insertBefore(fig, card.firstChild); tuneHero(card); } }); }
+
+/* ---- scheduler ---- */
+const SPECIALS=[
+  {key:"trending",mixKey:"trending",gap:5,since:0, run:async()=>{ if(mostreadQueue.length<4) loadTrending(); while(mostreadQueue.length){ const a=mostreadQueue.shift(); if(isArticleSeen(a)) continue; renderArticle(a,{cls:"trending special",eyebrow:`<p class="eyebrow"><span class="dot"></span>\ud83d\udd25 Trending</p>`,source:"Wikipedia",upgrade:false}); return true; } return false; }},
+  {key:"news",mixKey:"news",gap:7,since:0, run:async()=>{ while(newsQueue.length){ const n=newsQueue.shift(); if(seen.has(n.seenKey)) continue; renderNews(n); return true; } return false; }},
+  {key:"featured",mixKey:"news",gap:13,since:0, run:async()=>{ while(featuredQueue.length){ const f=featuredQueue.shift(); if(seen.has(f.seenKey)) continue; renderFeatured(f); return true; } return false; }},
+  {key:"dyk",mixKey:"dyk",gap:6,since:0, run:async()=>{ if(dykQueue.length<3) loadDyk(); while(dykQueue.length){ const d=dykQueue.shift(); if(seen.has(dykSeenKey(d))) continue; renderDyk(d); return true; } return false; }},
+  {key:"onthisday",mixKey:"onthisday",gap:6,since:0, run:async()=>{ while(onthisdayQueue.length){ const o=onthisdayQueue.shift(); if(seen.has(specialSeenKey("otd",String(o.year||""),(o.text||"").slice(0,40)))) continue; renderOnThisDay(o); return true; } return false; }},
+  {key:"image",mixKey:"image",gap:16,since:0, run:async()=>{ while(imageQueue.length){ const im=imageQueue.shift(); if(seen.has(specialSeenKey("potd",im.title||""))) continue; renderImage(im); return true; } return false; }},
+  {key:"place",mixKey:"place",gap:9,since:0, run:async()=>{ if(placeQueue.length<3) loadPlaces(); while(placeQueue.length){ const p=placeQueue.shift(); if(seen.has(placeHistoryKey(p))) continue; renderPlace(p); return true; } return false; }},
+  {key:"word",mixKey:"word",gap:8,since:0, run:async()=>{ if(wordPool.length<6) await loadWords(); let tries=0; while(wordPool.length&&tries<6){ const wq=wordPool.shift(); tries++; if(seen.has(wordSeenKey({word:wq}))) continue; const w=await fetchWord(wq); if(w){ renderWord(w); return true; } } return false; }},
+];
+function effGap(spec){ const v=settings.mix[spec.mixKey]??2; return spec.gap*MIXF[v]; }
+function categoryMode(){ return topic!=="For you"; }
+function lastSpecial(){ return feed.lastElementChild?.classList.contains("special"); }
+async function fillPool(min){ let t=0; while(pool.length<min && t<6){ const n=await fetchArticles(); t++; if(offline) break; if(n===0 && pool.length>0 && t>=3) break; } if(!pool.length) await fetchArticles(); }
+
+async function addOne(){ if(offline){ showNoInternet(); return; } total++; for(const s of SPECIALS) s.since++;
+  if(total>WARMUP && !lastSpecial()){ let best=null,br=0;
+    for(const s of SPECIALS){ if(categoryMode()) continue; const v=settings.mix[s.mixKey]??2; if(v===0) continue; const g=effGap(s); if(!isFinite(g)||s.since<g) continue; const ratio=s.since/g; if(ratio>br){ br=ratio; best=s; } }
+    if(best){ const ok=await best.run(); if(ok){ best.since=0; return; } }
+  }
+  if(pool.length<1) await fillPool(3);
+  const a=pickNext();
+  if(a){ renderArticle(a); }
+  if(pool.length<REFILL_AT) fillPool(REFILL_AT); }
+async function addMore(n){ for(let i=0;i<n;i++) await addOne(); }
+
+const loadObs=new IntersectionObserver(es=>{ if(es[0].isIntersecting) addMore(STEP); },{rootMargin:"800px"});
+loadObs.observe(sentinel);
+async function restart(){ feed.innerHTML=""; pool=[]; contToken=null; topicSeriesSeen.clear(); total=0; for(const s of SPECIALS) s.since=Math.floor(Math.random()*s.gap); await fillPool(12); await addMore(5); }
+
+/* ---- UI ---- */
+const chipRow=document.getElementById("chipRow");
+function buildChips(){ chipRow.innerHTML=""; ["For you",...TOPICS].forEach(t=>{ const b=document.createElement("button"); b.className="chip"+(t===topic?" active":""); b.textContent=t;
+  b.onclick=()=>{ topic=t; document.querySelectorAll("#chipRow .chip").forEach(c=>c.classList.toggle("active",c.textContent===t)); window.scrollTo({top:0}); restart(); }; chipRow.appendChild(b); }); }
+document.getElementById("brand").onclick=()=>{ topic="For you"; buildChips(); window.scrollTo({top:0}); restart(); };
+function fillLangSelect(sel){ sel.innerHTML=LANGS.map(([v,n])=>`<option value="${v}">${n}</option>`).join(""); sel.value=settings.lang; }
+function catChips(container,onToggle){ container.innerHTML=""; const cls=v=>v>0?"chip like":v<0?"chip dislike":"chip"; TOPICS.forEach(c=>{ const b=document.createElement("button"); const v0=settings.topicPrefs[c]||0; b.className=cls(v0); b.textContent=c;
+  b.onclick=()=>{ let v=settings.topicPrefs[c]||0; v = v===0?1 : v===1?-1 : 0; if(v===0){ delete settings.topicPrefs[c]; catScores.delete(c); } else settings.topicPrefs[c]=v; b.className=cls(v); onToggle&&onToggle(); }; container.appendChild(b); }); }
+function buildSliders(){ const box=document.getElementById("sliders"); box.innerHTML=""; MIX_ITEMS.forEach(([key,name])=>{ const v=settings.mix[key]??2; const wrap=document.createElement("div"); wrap.className="slider"; wrap.innerHTML=`<label>${name}</label><input type="range" min="0" max="3" step="1" value="${v}"><span class="val">${MIX_LABELS[v]}</span>`; const range=wrap.querySelector("input"),val=wrap.querySelector(".val"); range.oninput=()=>{ settings.mix[key]=+range.value; val.textContent=MIX_LABELS[+range.value]; saveSettings(); }; box.appendChild(wrap); }); }
+
+const settingsModal=document.getElementById("settingsModal");
+function renderAbout(){
+  document.getElementById("aboutLicense").textContent=APP_INFO.license;
+  const gh=document.getElementById("aboutGithub"), pp=document.getElementById("aboutDonate");
+  gh.hidden=!APP_INFO.githubUrl; if(APP_INFO.githubUrl) gh.href=APP_INFO.githubUrl;
+  pp.hidden=!APP_INFO.paypalUrl; if(APP_INFO.paypalUrl) pp.href=APP_INFO.paypalUrl;
+}
+function openSettings(){ fillLangSelect(document.getElementById("setLang")); document.getElementById("profileName").value=localProfile.name||"Default"; updateProfileMeta(); renderAbout(); updateInstallSettingsButton(); document.getElementById("setSources").checked=!!settings.sources; buildSliders(); catChips(document.getElementById("setCats"),()=>{ seedCats(); saveSettings(); }); renderPanel(); settingsModal.classList.add("open"); }
+document.getElementById("settingsBtn").onclick=openSettings;
+document.getElementById("settingsClose").onclick=()=>settingsModal.classList.remove("open");
+document.getElementById("setLang").onchange=e=>{ settings.lang=e.target.value; saveSettings(); changeLang(); };
+document.getElementById("profileName").onchange=e=>{ localProfile.name=(e.target.value||"Default").trim().slice(0,40)||"Default"; e.target.value=localProfile.name; scheduleProfileSave(); };
+document.getElementById("setSources").onchange=e=>{ settings.sources=e.target.checked; saveSettings(); };
+document.getElementById("resetSeenBtn").onclick=()=>{ if(confirm("Forget the posts this profile has already seen? Your interest scores will be kept.")){ clearSeenHistory(); window.scrollTo({top:0}); restart(); } };
+document.getElementById("settingsInstallBtn").onclick=requestInstall;
+document.getElementById("resetBtn").onclick=()=>{ catScores.clear(); seedCats(); saveScores(); postsSinceLike=0; renderPanel(); window.scrollTo({top:0}); restart(); };
+document.getElementById("exportBtn").onclick=exportProfile;
+document.getElementById("importBtn").onclick=()=>document.getElementById("importFile").click();
+document.getElementById("importFile").onchange=e=>{ if(e.target.files[0]) importProfile(e.target.files[0]); };
+settingsModal.addEventListener("click",e=>{ if(e.target===settingsModal) settingsModal.classList.remove("open"); });
+
+function renderPanel(){ const list=document.getElementById("panelList"); const top=[...catScores.entries()].filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,8); list.innerHTML=top.length?top.map(([c,v])=>`<li>${esc(c)} <span class="score">+${Math.round(v)}</span></li>`).join(""):`<li class="empty">Nothing yet — like or open a few cards.</li>`; }
+function seedCats(){ for(const c in settings.topicPrefs){ const v=settings.topicPrefs[c]; if(v>0){ if((catScores.get(c)||0)<40) catScores.set(c,40); } else if(v<0){ catScores.set(c,-140); } } saveScores(); }
+async function changeLang(){ document.documentElement.lang=settings.lang; featuredQueue=[]; newsQueue=[]; placeQueue=[]; mostreadQueue=[]; featuredSeen.clear(); newsSeen.clear(); mostreadSeen.clear(); placeSeen.clear(); loadFeatured(); loadPlaces(); await restart(); }
+
+function exportProfile(){ saveLocalProfileNow(); const data={version:2,settings,profile:profileSnapshot()}; const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="wikker-profile.json"; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
+function importProfile(file){ const r=new FileReader(); r.onload=()=>{ try{ const d=JSON.parse(r.result); if(d.settings){ settings=Object.assign({},DEFAULTS,d.settings); settings.mix=Object.assign({},DEFAULTS.mix,d.settings.mix||{}); saveSettings(); }
+    const p=d.profile||null, importedScores=p?.scores||d.scores, importedSeen=p?.seen||d.seen;
+    if(Array.isArray(importedScores)){ catScores.clear(); for(const [k,v] of importedScores) catScores.set(k,v); migrateLegacyScores(); }
+    if(Array.isArray(importedSeen)){ seen.clear(); seenOrder.length=0; for(const key of importedSeen.slice(-MAX_SEEN_KEYS)){ const k=typeof key==="string"?key:`legacy:${key}`; if(!seen.has(k)){ seen.add(k); seenOrder.push(k); } } }
+    if(p?.name) localProfile.name=String(p.name).slice(0,40); localProfile.postsSeen=Number(p?.postsSeen)||seenOrder.length; saveLocalProfileNow(); buildChips(); openSettings(); changeLang();
+  }catch{} }; r.readAsText(file); }
+
+/* onboarding */
+const onboardModal=document.getElementById("onboardModal");
+function showOnboard(){ fillLangSelect(document.getElementById("onboardLang")); catChips(document.getElementById("onboardCats")); onboardModal.classList.add("open"); }
+document.getElementById("onboardLang").onchange=e=>{ settings.lang=e.target.value; };
+document.getElementById("onboardStart").onclick=()=>{ settings.onboarded=true; seedCats(); saveSettings(); onboardModal.classList.remove("open"); boot(); };
+
+function showNoInternet(){
+  sentinel.style.display="none";
+  if(feed.querySelector(".no-net")) return;
+  const box=document.createElement("div"); box.className="no-net";
+  box.innerHTML=`<div class="no-net-icon">⚠</div><strong>No internet connection</strong><p>Wikker needs a connection to load content from Wikipedia.</p><button class="btn-primary" id="retryNet" style="width:auto;margin-top:14px;padding:11px 22px">Try again</button>`;
+  feed.appendChild(box);
+  document.getElementById("retryNet").onclick=()=>{ offline=false; box.remove(); sentinel.style.display=""; restart(); };
+}
+function clearNoInternet(){ const b=feed.querySelector(".no-net"); if(b) b.remove(); sentinel.style.display=""; }
+
+/* boot */
+function boot(){ buildChips(); seedCats(); renderPanel(); updateProfileMeta(); renderAbout(); loadWords(); loadDyk(); loadFeatured(); loadTrending(); loadPlaces(); restart(); setTimeout(showInstallNotice,1800); }
+migrateLegacyScores();
+buildChips();
+if(!settings.onboarded) showOnboard(); else boot();
+</script>
+</body>
+</html>
