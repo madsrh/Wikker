@@ -47,7 +47,10 @@
   --body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, sans-serif;
 }
 *{ box-sizing:border-box; }
-html{ scroll-behavior:smooth; }
+html{ scroll-behavior:smooth; scroll-snap-type:y proximity; scroll-padding-top:112px; }
+.card{ scroll-snap-align:start; scroll-margin-top:112px; }
+.share.copied{ color:var(--accent); }
+@media (prefers-reduced-motion: reduce){ html{ scroll-snap-type:none; scroll-behavior:auto; } }
 @media (prefers-reduced-motion: reduce){ html{ scroll-behavior:auto; } }
 body{ margin:0; background:var(--paper); color:var(--ink); font-family:var(--body); line-height:1.55; -webkit-font-smoothing:antialiased; }
 a{ color:inherit; }
@@ -328,7 +331,7 @@ const BROAD_INTEREST_RULES = [
   ["Art", /(?:^|[^\p{L}\p{N}])(?:art|arts|kunst\p{L}*|artist|artists|painting|paintings|maleri\p{L}*|sculpture|sculptures|skulptur\p{L}*|architecture|arkitektur|literature|litteratur|novel|novels|poetry|poesi|photography|photographer\p{L}*)(?=$|[^\p{L}\p{N}])/iu],
   ["People", /(?:^|[^\p{L}\p{N}])(?:people|person|persons|personer|personen|personnes|persone|pessoas|politician|politicians|politiker\p{L}*|writer|writers|forfatter\p{L}*|author|authors|king|kings|konge\p{L}*|queen|queens|dronning\p{L}*|monarch\p{L}*|president\p{L}*|born|f[oø]dt|geboren|nacido|nacida|nato|nata|f[oö]dd)(?=$|[^\p{L}\p{N}])/iu]
 ];
-const MIX_ITEMS = [["news","News & featured"],["dyk","Did you know"],["trending","Trending"],["onthisday","On this day"],["image","Picture of the day"],["place","Places"],["word","Words"]];
+const MIX_ITEMS = [["news","News & featured"],["dyk","Did you know"],["trending","Trending"],["onthisday","On this day"],["image","Picture of the day"],["place","Places"],["word","Words"],["quote","Quotes"]];
 const MIX_LABELS = ["Off","Less","Normal","More"]; const MIXF = [Infinity,1.7,1.0,0.6];
 const LBL = {
   featured:{da:"Ugens artikel",de:"Artikel des Tages",es:"Artículo destacado",fr:"Article du jour",nl:"Uitgelicht",sv:"Utvald artikel",nb:"Ukens artikkel",it:"In vetrina",pt:"Artigo em destaque",_:"Featured article"},
@@ -339,11 +342,12 @@ const LBL = {
 const W = { PASS:-5, LIKE:50, LIKE_STREAK:4, DISLIKE:60, OPEN:75, IMG_BONUS:8, HOOK_BONUS:1, BORING:-40 };
 // Xikipedia's exploration mix is 18% random, 42% best-score, 40% weighted.
 // Wikker keeps that mix but uses a larger live candidate pool and hard de-duplication.
-const BATCH=18, REFILL_AT=14, STEP=3, WARMUP=3, CATEGORY_SEARCH_WINDOW=320, MAX_SEEN_KEYS=12000;
+const BATCH=18, REFILL_AT=8, STEP=3, WARMUP=3, CATEGORY_SEARCH_WINDOW=320, MAX_SEEN_KEYS=12000;
 const LS_SET="wikker.settings.v1", LS_SCORES="wikker.scores.v1", LS_THEME="wikker.theme", LS_SEEN="wikker.seen.v1", LS_PROFILE="wikker.profile.v2", LS_INSTALL_DISMISS="wikker.install.dismissed.v1";
-const DEFAULTS = { lang:"en", mix:{news:2,dyk:2,trending:2,onthisday:2,image:1,place:2,word:2}, cats:[], topicPrefs:{}, sources:false, onboarded:false };
+const DEFAULTS = { lang:"en", mix:{news:2,dyk:2,trending:2,onthisday:2,image:1,place:2,word:2,quote:2}, cats:[], topicPrefs:{}, sources:false, onboarded:false };
 const APP_INFO = {
-  license:"Not specified yet",
+  license:"AGPL-3.0",
+  licenseUrl:"https://www.gnu.org/licenses/agpl-3.0.html",
   githubUrl:"https://github.com/madsrh/Wikker/",
   paypalUrl:"https://www.paypal.com/donate/?business=NTB7G4YVA44ZY&no_recurring=0&item_name=Enjoying%20this%20free%20app%3F%20Consider%20supporting%20the%20project.%20Even%20the%20smallest%20donation%20is%20appreciated.&currency_code=USD",
   xikipediaUrl:"https://github.com/rebane2001/xikipedia"
@@ -359,7 +363,7 @@ const catScores = new Map(localProfile.scores||[]);
 const seenOrder = [...(localProfile.seen||[])];
 const seen = new Set(seenOrder);
 const placeSeen = new Set();
-let pool=[], wordQueue=[], dykQueue=[], placeQueue=[], featuredQueue=[], newsQueue=[], mostreadQueue=[], onthisdayQueue=[], imageQueue=[];
+let pool=[], wordQueue=[], dykQueue=[], quoteQueue=[], placeQueue=[], featuredQueue=[], newsQueue=[], mostreadQueue=[], onthisdayQueue=[], imageQueue=[];
 const featuredSeen=new Set(), newsSeen=new Set(), mostreadSeen=new Set(), otdSeen=new Set(), imgSeen=new Set();
 const topicSeriesSeen=new Set();
 let topic="For you", contToken=null, fetching=false;
@@ -524,15 +528,15 @@ function normalize(page){ if(!page||page.missing) return null; const extract=(pa
   const cats=(page.categories||[]).map(c=>c.title.replace(/^[^:]+:/,"").trim()).filter(Boolean); const {hook,rest,spark}=pickHook(extract);
   const displayCat=niceCategory(cats), scoreCat=inferInterestCategory(cats,page.title,extract), host=wikiHost();
   return { id:page.pageid,qid:page.pageprops?.wikibase_item||null,seenKey:pageSeenKey(page,host),titleKey:titleSeenKey(host,page.title),title:displayTitle(page.title),extract,hook,rest,hookSpark:spark,cats,displayCat,scoreCat,thumb:page.thumbnail?page.thumbnail.source:null,url:wikiUrl(host,page.title),type:"article" }; }
-async function fetchArticles(){ if(fetching) return 0; fetching=true;
+async function fetchArticles(){ if(fetching||offline) return 0; fetching=true;
   try{ const res=await fetch(q(sourceParams()),{headers:{Accept:"application/json"}}); if(!res.ok) throw 0; const data=await res.json();
     if(topic!=="For you") contToken=null; let added=0;
     const pages=topic==="For you"?(data.query?.pages||[]):shuffle([...(data.query?.pages||[])]);
     for(const pg of pages){ const a=normalize(pg); if(!a||isArticleSeen(a)||pool.some(x=>x.seenKey===a.seenKey||x.titleKey===a.titleKey)) continue; if(interestScore(a)<=W.BORING) continue;
       if(topic!=="For you"){ const family=seriesFamilyKey(a.title); if(family&&topicSeriesSeen.has(family)) continue; if(family) topicSeriesSeen.add(family); }
       pool.push(a); added++; }
-    offline=false; clearNoInternet(); return added;
-  }catch(e){ offline=true; showNoInternet(); return 0; } finally{ fetching=false; } }
+    netFails=0; offline=false; clearNoInternet(); return added;
+  }catch(e){ netFails++; if(netFails>=2){ offline=true; showNoInternet(); } return 0; } finally{ fetching=false; } }
 
 const mediaCache=new Map(), englishTitleCache=new Map();
 async function fetchImages(title,host){ const h=host||wikiHost(), key=h+"|"+title; if(mediaCache.has(key)) return mediaCache.get(key);
@@ -553,26 +557,33 @@ async function pageImage(title,host){ return (await fetchImagesWithFallback(titl
 
 const audioCache=new Map();
 async function fetchWord(word){
-  try{
-    const res=await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
-    if(!res.ok) return null;
-    const data=await res.json(); const entry=Array.isArray(data)?data[0]:null; if(!entry) return null;
-    let ipa=entry.phonetic||"", audio="";
-    for(const p of (entry.phonetics||[])){ if(!ipa&&p.text) ipa=p.text; if(!audio&&p.audio) audio=p.audio; }
-    const m=(entry.meanings||[])[0]||{}; const pos=m.partOfSpeech||"";
-    const def=((m.definitions||[])[0]||{}).definition||""; if(!def) return null;
-    if(audio&&audio.startsWith("//")) audio="https:"+audio;
-    return { word:entry.word||word, ipa, pos, def, audio, url:wikiUrl("en.wiktionary.org",word) };
-  }catch{ return null; }
+  const wtP=fetch(`https://en.wiktionary.org/api/rest_v1/page/definition/${encodeURIComponent(word.replace(/ /g,"_"))}`).then(r=>r.ok?r.json():null).catch(()=>null);
+  const ddP=fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`).then(r=>r.ok?r.json():null).catch(()=>null);
+  const [wt,dd]=await Promise.all([wtP,ddP]);
+  let def="",pos="",ipa="",audio="";
+  if(wt){ const first=(wt.en||[])[0]; if(first){ def=stripHtml((first.definitions?.[0]?.definition)||""); pos=first.partOfSpeech||""; } }
+  if(dd){ const e=Array.isArray(dd)?dd[0]:null; if(e){ for(const p of (e.phonetics||[])){ if(!ipa&&p.text) ipa=p.text; if(!audio&&p.audio) audio=p.audio; } if(!def){ const m=(e.meanings||[])[0]||{}; def=((m.definitions||[])[0]||{}).definition||""; pos=pos||m.partOfSpeech||""; } } }
+  if(audio&&audio.startsWith("//")) audio="https:"+audio;
+  if(!def) return null;
+  return { word, ipa, pos, def, audio, url:wikiUrl("en.wiktionary.org",word) };
 }
 
-async function loadWords(){ if(wordPool.length>15||offline) return; const yr=new Date().getUTCFullYear();
-  for(const y of [yr,yr-1]){ try{
-    const res=await fetch("https://en.wiktionary.org/w/api.php?"+new URLSearchParams({action:"query",list:"categorymembers",cmtitle:`Category:Word of the day archive/${y}`,cmnamespace:"0",cmtype:"page",cmlimit:"500",format:"json",origin:"*",formatversion:"2"}));
-    if(!res.ok) continue; const ms=(await res.json()).query?.categorymembers||[];
-    for(const mm of ms){ const w=(mm.title||"").trim(); if(w&&!/[:\/]/.test(w)&&!seen.has(wordSeenKey({word:w}))&&!wordPool.includes(w)) wordPool.push(w); }
-  }catch{} if(wordPool.length>60) break; }
-  shuffle(wordPool); }
+let wordsLoading=false;
+async function loadWords(){ if(offline||wordsLoading||wordQueue.length>=6) return; wordsLoading=true;
+  try{
+    if(wordPool.length<8){ const yr=new Date().getUTCFullYear();
+      for(const y of [yr,yr-1]){ try{
+        const res=await fetch("https://en.wiktionary.org/w/api.php?"+new URLSearchParams({action:"query",list:"categorymembers",cmtitle:`Category:Word of the day archive/${y}`,cmlimit:"500",format:"json",origin:"*",formatversion:"2"}));
+        if(!res.ok) continue; const ms=(await res.json()).query?.categorymembers||[];
+        for(const mm of ms){ const w=(mm.title||"").trim(); if(w&&!/[:\/]/.test(w)&&!seen.has(wordSeenKey({word:w}))&&!wordPool.includes(w)) wordPool.push(w); }
+      }catch{} if(wordPool.length>40) break; }
+      shuffle(wordPool);
+    }
+    const batch=[]; while(batch.length<4 && wordPool.length){ const wq=wordPool.shift(); if(seen.has(wordSeenKey({word:wq}))) continue; batch.push(wq); }
+    const results=await Promise.all(batch.map(w=>fetchWord(w)));
+    for(const w of results){ if(w && !wordQueue.some(x=>x.word===w.word) && !seen.has(wordSeenKey(w))) wordQueue.push(w); }
+  }catch{} finally{ wordsLoading=false; }
+}
 /* places (Wikivoyage) */
 async function loadPlaces(){ try{ const res=await fetch(`https://${voyHost()}/w/api.php?`+new URLSearchParams({action:"query",format:"json",origin:"*",formatversion:"2",generator:"random",grnnamespace:"0",grnlimit:"8",prop:"extracts|pageimages",exintro:"1",explaintext:"1",exchars:"500",exlimit:"max",piprop:"thumbnail",pithumbsize:"1000"}));
   if(!res.ok) return; const data=await res.json();
@@ -621,7 +632,7 @@ function engage(cats,delta){ for(const c of cats){ if(DULLCAT_RE.test(c)) contin
 const inObs=new IntersectionObserver(es=>{ for(const e of es) if(e.isIntersecting){ e.target.classList.add("in"); inObs.unobserve(e.target); } },{threshold:0.05});
 const passObs=new IntersectionObserver(es=>{ for(const e of es){ const c=e.target; if(!e.isIntersecting && e.boundingClientRect.top<0 && !c._passed){ c._passed=true; postsSinceLike++; if(!c._react||c._react==="none") engage(c._cats,W.PASS); passObs.unobserve(c); } } },{threshold:0});
 function srcPill(name){ return settings.sources&&name?`<span class="src">${esc(name)}</span>`:""; }
-function actionsRow(source,interest,extra){ return `<div class="actions"><div class="tags">${srcPill(source)}${interest?`<span class="tag" title="Interest updated by Like or Not interested">${esc(interest)}</span>`:""}${extra||""}</div><div class="react"><button class="dislike" aria-label="Not interested" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></svg></button><button class="like" aria-label="Like" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg></button></div></div>`; }
+function actionsRow(source,interest,extra){ return `<div class="actions"><div class="tags">${srcPill(source)}${interest?`<span class="tag" title="Interest updated by Like or Not interested">${esc(interest)}</span>`:""}${extra||""}</div><div class="react"><button class="share" aria-label="Share"><svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg></button><button class="dislike" aria-label="Not interested" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></svg></button><button class="like" aria-label="Like" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg></button></div></div>`; }
 function attach(card,cats,url){ card._cats=cats; card.tabIndex=0; card._react="none"; card._applied=0;
   const open=e=>{ if(e.target.closest(".react")||e.target.closest(".play")) return; engage(cats,W.OPEN); if(!e.target.closest("a")) window.open(url,"_blank","noopener"); };
   card.addEventListener("click",open); card.addEventListener("keydown",e=>{ if(e.key==="Enter") open(e); });
@@ -633,6 +644,10 @@ function attach(card,cats,url){ card._cats=cats; card.tabIndex=0; card._react="n
     disBtn.classList.toggle("on",next==="dislike"); disBtn.setAttribute("aria-pressed",next==="dislike"); }
   likeBtn.addEventListener("click",e=>{ e.stopPropagation(); setReact("like"); });
   disBtn.addEventListener("click",e=>{ e.stopPropagation(); setReact("dislike"); });
+  const shareBtn=card.querySelector(".share");
+  if(shareBtn) shareBtn.addEventListener("click",async e=>{ e.stopPropagation();
+    const title=(card.querySelector(".title,.word,.fact,.qtext,.headline")?.textContent||"Wikker").trim();
+    try{ if(navigator.share){ await navigator.share({title,url}); } else { await navigator.clipboard.writeText(url); shareBtn.classList.add("copied"); setTimeout(()=>shareBtn.classList.remove("copied"),1200); } }catch{} });
   inObs.observe(card); passObs.observe(card); feed.appendChild(card); }
 function heroHTML(src){ return src?`<figure class="hero"><div class="hero-bg" style="background-image:url('${esc(src)}')"></div><img class="hero-img" src="${esc(src)}" alt="" loading="lazy" decoding="async"></figure>`:""; }
 function tuneHero(card){ const img=card.querySelector(".hero-img"); if(!img) return; const fit=()=>{ card.querySelector(".hero").classList.toggle("portrait", img.naturalWidth/img.naturalHeight<0.9); }; if(img.complete&&img.naturalWidth) fit(); else img.addEventListener("load",fit,{once:true}); }
@@ -689,15 +704,16 @@ function renderImage(im){ const card=document.createElement("article"); card.cla
   card.innerHTML=`${im.thumb?heroHTML(im.thumb):""}<div class="body"><p class="eyebrow">\ud83c\udf04 ${esc(label("image"))}</p>${cap?`<p class="hook">${esc(cap)}</p>`:""}</div>${actionsRow("Wikimedia Commons","Photography")}`;
   attach(card,["Photography"],im.url&&im.url!=="#"?im.url:"https://commons.wikimedia.org"); tuneHero(card); }
 
-const DYK_TEMPLATE={ en:"Template:Did you know" };
+const DYK_TEMPLATE={ en:"Template:Did you know", da:"Skabelon:Vidste du" };
 async function loadDyk(){ if(offline) return; const tmpl=DYK_TEMPLATE[settings.lang]; if(!tmpl) return;
   try{ const res=await fetch(`https://${feedHost()}/w/api.php?`+new URLSearchParams({action:"parse",page:tmpl,prop:"text",format:"json",origin:"*",formatversion:"2"}));
     if(!res.ok) return; const doc=new DOMParser().parseFromString((await res.json()).parse?.text||"","text/html");
     for(const li of doc.querySelectorAll(".mw-parser-output li")){
       const c=li.cloneNode(true); c.querySelectorAll("sup,.reference,style").forEach(n=>n.remove());
-      let text=(c.textContent||"").replace(/\\s+/g," ").trim();
-      if(!/\\?$/.test(text)) continue; text=text.replace(/^(?:\\.{3}|\u2026)\\s*/,"").trim();
-      if(text.length<20||text.length>320||!/\\bthat\\b/i.test(text)) continue;
+      let text=(c.textContent||"").replace(/\s+/g," ").trim();
+      if(!/\?$/.test(text)) continue;
+      text=text.replace(/^(?:\.{3}|\u2026)\s*/,"").trim();
+      if(text.length<20||text.length>320) continue;
       const a=li.querySelector("b a[href^='/wiki/']")||li.querySelector("a[href^='/wiki/']");
       const title=a?a.textContent.trim():null; const url=a?`https://${feedHost()}${a.getAttribute("href")}`:`https://${feedHost()}/wiki/Main_Page`;
       const d={fact:text,title,url}; if(seen.has(dykSeenKey(d))||dykQueue.some(x=>x.fact===text)) continue; dykQueue.push(d);
@@ -711,6 +727,29 @@ function renderDyk(d){ const card=document.createElement("article"); card.classN
   attach(card,[scoreCat],d.url);
   if(d.title&&!offline) pageImage(d.title,feedHost()).then(src=>{ if(src){ const fig=document.createElement("figure"); fig.className="hero"; fig.innerHTML=`<div class="hero-bg" style="background-image:url('${esc(src)}')"></div><img class="hero-img" src="${esc(src)}" alt="">`; card.insertBefore(fig, card.firstChild); tuneHero(card); } }); }
 
+function quoteSeenKey(q){ return specialSeenKey("quote",(q.text||"").slice(0,60)); }
+async function loadQuotes(){ if(offline||quoteQueue.length>6) return;
+  try{ const res=await fetch("https://en.wikiquote.org/w/api.php?action=featuredfeed&feed=qotd&origin=*");
+    if(!res.ok) return; const xml=await res.text(); const doc=new DOMParser().parseFromString(xml,"application/xml");
+    for(const it of [...doc.querySelectorAll("item, entry")]){
+      const raw=((it.querySelector("description")||it.querySelector("summary")||it.querySelector("content"))?.textContent)||"";
+      const h=new DOMParser().parseFromString(raw,"text/html"); h.querySelectorAll("sup,.reference,style,script").forEach(n=>n.remove());
+      const links=[...h.querySelectorAll("a")].map(a=>a.textContent.trim()).filter(Boolean);
+      let author=links.length?links[links.length-1]:"";
+      let text=(h.querySelector("blockquote")?.textContent)||h.body.textContent||"";
+      text=text.replace(/\s+/g," ").trim().replace(/\s+[~\u2013\u2014]\s+.{1,70}$/,"").replace(/^["\u201c\u201d'']+|["\u201c\u201d'']+$/g,"").trim();
+      if(text.length<15||text.length>320) continue;
+      const q={text,author,url:author?wikiUrl("en.wikiquote.org",author):"https://en.wikiquote.org"};
+      if(seen.has(quoteSeenKey(q))||quoteQueue.some(x=>x.text===q.text)) continue; quoteQueue.push(q);
+    }
+  }catch{} }
+function renderQuote(q){ const card=document.createElement("article"); card.className="card quote special";
+  rememberSeenKeys([quoteSeenKey(q)],true);
+  card.innerHTML=`<div class="body"><span class="qm o">\u201c</span><span class="qm c">\u201d</span>
+    <p class="qtext">${esc(q.text)}</p>${q.author?`<p class="qauthor">${esc(q.author)}</p>`:""}
+    ${q.author?`<a class="more" href="${esc(q.url)}" target="_blank" rel="noopener">See on Wikiquote \u2192</a>`:""}</div>${actionsRow("Wikiquote","Quotes")}`;
+  attach(card,["Quotes"],q.url); }
+
 /* ---- scheduler ---- */
 const SPECIALS=[
   {key:"trending",mixKey:"trending",gap:5,since:0, run:async()=>{ if(mostreadQueue.length<4) loadTrending(); while(mostreadQueue.length){ const a=mostreadQueue.shift(); if(isArticleSeen(a)) continue; renderArticle(a,{cls:"trending special",eyebrow:`<p class="eyebrow"><span class="dot"></span>\ud83d\udd25 Trending</p>`,source:"Wikipedia",upgrade:false}); return true; } return false; }},
@@ -720,12 +759,13 @@ const SPECIALS=[
   {key:"onthisday",mixKey:"onthisday",gap:6,since:0, run:async()=>{ while(onthisdayQueue.length){ const o=onthisdayQueue.shift(); if(seen.has(specialSeenKey("otd",String(o.year||""),(o.text||"").slice(0,40)))) continue; renderOnThisDay(o); return true; } return false; }},
   {key:"image",mixKey:"image",gap:16,since:0, run:async()=>{ while(imageQueue.length){ const im=imageQueue.shift(); if(seen.has(specialSeenKey("potd",im.title||""))) continue; renderImage(im); return true; } return false; }},
   {key:"place",mixKey:"place",gap:9,since:0, run:async()=>{ if(placeQueue.length<3) loadPlaces(); while(placeQueue.length){ const p=placeQueue.shift(); if(seen.has(placeHistoryKey(p))) continue; renderPlace(p); return true; } return false; }},
-  {key:"word",mixKey:"word",gap:8,since:0, run:async()=>{ if(wordPool.length<6) await loadWords(); let tries=0; while(wordPool.length&&tries<6){ const wq=wordPool.shift(); tries++; if(seen.has(wordSeenKey({word:wq}))) continue; const w=await fetchWord(wq); if(w){ renderWord(w); return true; } } return false; }},
+  {key:"quote",mixKey:"quote",gap:11,since:0, run:async()=>{ if(quoteQueue.length<3) loadQuotes(); while(quoteQueue.length){ const q=quoteQueue.shift(); if(seen.has(quoteSeenKey(q))) continue; renderQuote(q); return true; } return false; }},
+  {key:"word",mixKey:"word",gap:8,since:0, run:async()=>{ if(wordQueue.length<3) loadWords(); while(wordQueue.length){ const w=wordQueue.shift(); if(seen.has(wordSeenKey(w))) continue; renderWord(w); return true; } return false; }},
 ];
 function effGap(spec){ const v=settings.mix[spec.mixKey]??2; return spec.gap*MIXF[v]; }
 function categoryMode(){ return topic!=="For you"; }
 function lastSpecial(){ return feed.lastElementChild?.classList.contains("special"); }
-async function fillPool(min){ let t=0; while(pool.length<min && t<6){ const n=await fetchArticles(); t++; if(offline) break; if(n===0 && pool.length>0 && t>=3) break; } if(!pool.length) await fetchArticles(); }
+async function fillPool(min){ let t=0; while(pool.length<min && t<5){ const n=await fetchArticles(); t++; if(offline||n===0) break; } }
 
 async function addOne(){ if(offline){ showNoInternet(); return; } total++; for(const s of SPECIALS) s.since++;
   if(total>WARMUP && !lastSpecial()){ let best=null,br=0;
@@ -736,11 +776,16 @@ async function addOne(){ if(offline){ showNoInternet(); return; } total++; for(c
   const a=pickNext();
   if(a){ renderArticle(a); }
   if(pool.length<REFILL_AT) fillPool(REFILL_AT); }
-async function addMore(n){ for(let i=0;i<n;i++) await addOne(); }
+let adding=false, netFails=0;
+async function addMore(n){ if(adding||offline) return; adding=true;
+  try{ for(let i=0;i<n;i++){ if(offline) break; await addOne(); } } finally{ adding=false; } }
 
 const loadObs=new IntersectionObserver(es=>{ if(es[0].isIntersecting) addMore(STEP); },{rootMargin:"800px"});
 loadObs.observe(sentinel);
-async function restart(){ feed.innerHTML=""; pool=[]; contToken=null; topicSeriesSeen.clear(); total=0; for(const s of SPECIALS) s.since=Math.floor(Math.random()*s.gap); await fillPool(12); await addMore(5); }
+async function restart(){ feed.innerHTML=""; pool=[]; contToken=null; topicSeriesSeen.clear(); total=0; for(const s of SPECIALS) s.since=Math.floor(Math.random()*s.gap);
+  await fillPool(10);
+  await addMore(6);
+  let g=0; while(g++<3 && !offline){ const r=sentinel.getBoundingClientRect(); if(r.top>window.innerHeight) break; await addMore(3); } }
 
 /* ---- UI ---- */
 const chipRow=document.getElementById("chipRow");
@@ -797,12 +842,26 @@ function showNoInternet(){
   const box=document.createElement("div"); box.className="no-net";
   box.innerHTML=`<div class="no-net-icon">⚠</div><strong>No internet connection</strong><p>Wikker needs a connection to load content from Wikipedia.</p><button class="btn-primary" id="retryNet" style="width:auto;margin-top:14px;padding:11px 22px">Try again</button>`;
   feed.appendChild(box);
-  document.getElementById("retryNet").onclick=()=>{ offline=false; box.remove(); sentinel.style.display=""; restart(); };
+  document.getElementById("retryNet").onclick=()=>{ offline=false; netFails=0; box.remove(); sentinel.style.display=""; restart(); };
 }
 function clearNoInternet(){ const b=feed.querySelector(".no-net"); if(b) b.remove(); sentinel.style.display=""; }
 
 /* boot */
-function boot(){ buildChips(); seedCats(); renderPanel(); updateProfileMeta(); renderAbout(); loadWords(); loadDyk(); loadFeatured(); loadTrending(); loadPlaces(); restart(); setTimeout(showInstallNotice,1800); }
+/* keyboard navigation: j/k or arrows move between cards, l = like, s = share */
+function cardEls(){ return [...feed.querySelectorAll(".card")]; }
+function currentCardIdx(){ const cards=cardEls(); const y=window.scrollY+120; let idx=0; for(let i=0;i<cards.length;i++){ if(cards[i].offsetTop<=y) idx=i; else break; } return idx; }
+document.addEventListener("keydown",e=>{
+  if(e.metaKey||e.ctrlKey||e.altKey) return;
+  const t=e.target; if(t&&/^(input|textarea|select)$/i.test(t.tagName)) return;
+  if(document.querySelector(".backdrop.open")) return;
+  const cards=cardEls(); if(!cards.length) return;
+  if(e.key==="j"||e.key==="ArrowDown"){ e.preventDefault(); cards[Math.min(cards.length-1,currentCardIdx()+1)].scrollIntoView({behavior:"smooth",block:"start"}); }
+  else if(e.key==="k"||e.key==="ArrowUp"){ e.preventDefault(); cards[Math.max(0,currentCardIdx()-1)].scrollIntoView({behavior:"smooth",block:"start"}); }
+  else if(e.key==="l"){ cards[currentCardIdx()]?.querySelector(".like")?.click(); }
+  else if(e.key==="s"){ cards[currentCardIdx()]?.querySelector(".share")?.click(); }
+});
+
+function boot(){ buildChips(); seedCats(); renderPanel(); updateProfileMeta(); renderAbout(); loadWords(); loadDyk(); loadQuotes(); loadFeatured(); loadTrending(); loadPlaces(); restart(); setTimeout(showInstallNotice,1800); }
 migrateLegacyScores();
 buildChips();
 if(!settings.onboarded) showOnboard(); else boot();
